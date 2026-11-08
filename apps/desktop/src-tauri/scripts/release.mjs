@@ -89,7 +89,10 @@ const latestPath = join(macDir, 'latest.json')
 writeFileSync(latestPath, JSON.stringify(latest, null, 2) + '\n')
 
 const dmgDir = join(root, 'target/release/bundle/dmg')
-const dmg = existsSync(dmgDir) ? readdirSync(dmgDir).find((f) => f.endsWith('.dmg')) : null
+const builtDmg = existsSync(dmgDir) ? readdirSync(dmgDir).find((f) => f.endsWith('.dmg') && f.includes(version)) : null
+// Sürümsüz sabit ad: README'deki bağlantı (releases/latest/download/<ad>) her sürümde aynı kalır
+const dmg = builtDmg ? `Kaans-Terminal_macOS_${arch === 'aarch64' ? 'arm64' : 'x64'}.dmg` : null
+if (builtDmg) copyFileSync(join(dmgDir, builtDmg), join(dmgDir, dmg))
 console.log(`
 Hazır (yayınlanmadı):
   ${join(macDir, assetName)}

@@ -1,9 +1,15 @@
 # Kaan's Terminal
 
+**[⬇ Download for macOS (Apple Silicon)](https://github.com/kaankarakusx/kaans-terminal/releases/latest/download/Kaans-Terminal_macOS_arm64.dmg)**
+· [all releases](https://github.com/kaankarakusx/kaans-terminal/releases)
+
+> First launch: the app isn't notarized by Apple yet, so macOS warns about an unidentified developer.
+> Right-click the app → **Open** → **Open** (once). After that it updates itself.
+
 A desktop HUD and terminal for developers who run many AI coding sessions at once — Claude Code, Codex,
 Antigravity and others — side by side.
 
-macOS 13+ (Apple Silicon and Intel) · Windows 10/11 (64-bit) · MIT licensed · built with Tauri 2 + Svelte 5
+macOS 13+ (Apple Silicon; Intel and Windows builds coming) · MIT licensed · built with Tauri 2 + Svelte 5
 
 ## What it does
 
