@@ -114,7 +114,10 @@ class Social {
         this.offline = false
         void this.refresh()
       })
-      await listen<string>('social://error', (e) => (this.offline = e.payload === 'offline'))
+      await listen<string>('social://error', (e) => {
+        this.offline = e.payload === 'offline'
+        if (e.payload === 'unauthorized') void this.lost()
+      })
     }
     if (this.state.registered) await this.refresh()
     else if (!this.later) await this.probe()
@@ -142,6 +145,20 @@ class Social {
       this.offline = false
     } catch (e) {
       this.offline = String(e) === 'offline'
+      if (String(e) === 'unauthorized') await this.lost()
+    }
+  }
+
+  /**
+   * Sunucu hesabı tanımadı (başka sunucuda açılmış ya da silinmiş): Rust hesabı bıraktı. Durum yenilenir ve hacker
+   * name penceresi açılır ("later" seçilmiş olsa bile: kullanıcı aslında kayıtlı sanıyordu).
+   */
+  private async lost() {
+    if (demo) return
+    this.state = await invoke<SocialState>('social_state')
+    if (!this.state.registered) {
+      this.status = null
+      this.picking = true
     }
   }
 
@@ -153,6 +170,7 @@ class Social {
       this.offline = false
     } catch (e) {
       this.offline = String(e) === 'offline'
+      if (String(e) === 'unauthorized') await this.lost()
     }
   }
 

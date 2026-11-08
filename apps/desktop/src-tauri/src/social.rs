@@ -32,6 +32,10 @@ pub struct Account {
     pub token: String,
     pub name: String,
     pub tag: String,
+    /// Hesabın açıldığı sunucu. Başka sunucunun hesabı kullanılmaz (geliştirmede yerel sunucuda açılan hesap, kurulu
+    /// sürümde gerçek sunucuya gönderilmesin). Eski dosyalarda boş: sunucu 401 derse sıfırlanır.
+    #[serde(default)]
+    pub server: String,
 }
 
 /// Sayfaya giden durum (token yok)
@@ -88,7 +92,8 @@ impl Social {
             .new_agent();
         let account = std::fs::read(app_data.join(ACCOUNT))
             .ok()
-            .and_then(|b| serde_json::from_slice(&b).ok());
+            .and_then(|b| serde_json::from_slice::<Account>(&b).ok())
+            .filter(|a| a.server.is_empty() || a.server == base);
         Self {
             base,
             dir: app_data.to_path_buf(),
@@ -139,6 +144,14 @@ impl Social {
         Ok(())
     }
 
+    fn drop_stale_account(&self) {
+        let path = self.dir.join(ACCOUNT);
+        let _ = std::fs::rename(&path, self.dir.join("account.stale.json"));
+        *self.account.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        self.key_uploaded
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+    }
+
     fn call(&self, method: &str, path: &str, body: Option<Value>) -> Result<Value, SocialError> {
         let url = format!("{}/api/v1/{path}", self.base);
         let token = self.account().map(|a| a.token);
@@ -168,7 +181,14 @@ impl Social {
         let value: Value = res.body_mut().read_json().unwrap_or(Value::Null);
         match status {
             200..=299 => Ok(value),
-            401 => Err(SocialError::Unauthorized),
+            401 => {
+                // Sunucu bu token'ı tanımıyor (başka sunucuda açılmış ya da silinmiş hesap): hesap bırakılır,
+                // sayfa hacker name penceresini yeniden açar. Dosya silinmez, yanına `account.stale.json` olarak taşınır.
+                if auth.is_some() {
+                    self.drop_stale_account();
+                }
+                Err(SocialError::Unauthorized)
+            }
             _ => Err(SocialError::Server(
                 status,
                 value["error"]
@@ -195,6 +215,7 @@ impl Social {
             token: v["token"].as_str().unwrap_or_default().to_string(),
             name: v["name"].as_str().unwrap_or(name).to_string(),
             tag: v["tag"].as_str().unwrap_or_default().to_string(),
+            server: self.base.clone(),
         };
         if acc.token.is_empty() {
             return Err(SocialError::Server(0, "bad response".into()));
@@ -319,6 +340,7 @@ impl Social {
             token: v["token"].as_str().unwrap_or_default().to_string(),
             name: v["name"].as_str().unwrap_or(name).to_string(),
             tag: v["tag"].as_str().unwrap_or_default().to_string(),
+            server: self.base.clone(),
         }))?;
         Ok(self.state())
     }
@@ -587,5 +609,64 @@ mod tests {
         assert_eq!(s.heartbeat(true, 180, None), Ok(None));
         assert_eq!(s.register("kaan").unwrap_err(), SocialError::Offline);
         assert!(!tmp.path().join(ACCOUNT).exists());
+    }
+
+    fn write_account(dir: &Path, server: &str) {
+        let acc = Account {
+            token: "t0k".into(),
+            name: "kaan".into(),
+            tag: "5282".into(),
+            server: server.into(),
+        };
+        std::fs::write(dir.join(ACCOUNT), serde_json::to_vec(&acc).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn account_from_another_server_is_not_used() {
+        let tmp = tempfile::tempdir().unwrap();
+        write_account(tmp.path(), "http://127.0.0.1:8787");
+        let s = Social::new(tmp.path(), "https://example.invalid".into());
+        assert!(
+            !s.state().registered,
+            "yerel sunucunun hesabı gerçek sunucuda kullanılmaz"
+        );
+        let same = Social::new(tmp.path(), "http://127.0.0.1:8787".into());
+        assert!(same.state().registered);
+    }
+
+    /// 401 dönen tek seferlik sahte sunucu
+    fn unauthorized_server() -> String {
+        use std::io::{Read, Write};
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = l.local_addr().unwrap();
+        std::thread::spawn(move || {
+            if let Ok((mut c, _)) = l.accept() {
+                let mut buf = [0u8; 4096];
+                let _ = c.read(&mut buf);
+                let body = r#"{"error":"unauthorized"}"#;
+                let _ = write!(
+                    c,
+                    "HTTP/1.1 401 Unauthorized\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+        });
+        format!("http://{addr}")
+    }
+
+    #[test]
+    fn unknown_token_drops_the_account() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Eski biçim: sunucu alanı yok (boş) → yüklenir, sunucu 401 deyince bırakılır
+        write_account(tmp.path(), "");
+        let s = Social::new(tmp.path(), unauthorized_server());
+        assert!(s.state().registered);
+        assert_eq!(s.get("me/status").unwrap_err(), SocialError::Unauthorized);
+        assert!(!s.state().registered);
+        assert!(!tmp.path().join(ACCOUNT).exists());
+        assert!(
+            tmp.path().join("account.stale.json").exists(),
+            "dosya silinmez, kenara alınır"
+        );
     }
 }

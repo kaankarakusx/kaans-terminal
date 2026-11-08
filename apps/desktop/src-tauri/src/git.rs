@@ -870,9 +870,7 @@ mod tests {
             "remote: Permission to octo-org/demo-terminal.git denied to kaankarakusx.\nfatal: unable to access 'https://github.com/x/'",
         );
         assert!(
-            e.starts_with(
-                "kaankarakusx can't push to octo-org/demo-terminal: no write access"
-            ),
+            e.starts_with("kaankarakusx can't push to octo-org/demo-terminal: no write access"),
             "{e}"
         );
         assert!(
