@@ -1,0 +1,13 @@
+{
+  "id": "one-dark",
+  "name": "One Dark",
+  "bg": "#282c34",
+  "fg": "#abb2bf",
+  "cursor": "#528bff",
+  "selection": "#3e4451",
+  "accent": "#61afef",
+  "ansi": [
+    "#3f4451", "#e06c75", "#98c379", "#d19a66", "#61afef", "#c678dd", "#56b6c2", "#abb2bf",
+    "#5c6370", "#e06c75", "#98c379", "#e5c07b", "#61afef", "#c678dd", "#56b6c2", "#ffffff"
+  ]
+}

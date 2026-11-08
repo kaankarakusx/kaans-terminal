@@ -1,0 +1,21 @@
+Tema paletleri — kaynaklar ve lisanslar (TASARIM.md §9.4)
+==========================================================
+Yalnızca renk değerleri kullanılır (kod, görsel ya da logo yok). Her tema adı kendi sahibine aittir.
+
+GitHub Dark        primer/github-vscode-theme ("GitHub Dark Default")     MIT
+One Dark           atom/atom (one-dark-ui / one-dark-syntax)               MIT
+Dracula            dracula/dracula-theme (renk belirtimi)                  MIT
+Monokai            Wimer Hazenberg'in Monokai paleti (yaygın kullanılan değerler)
+Ayu Dark           ayu-theme/ayu-colors                                    MIT
+Night Owl          sdras/night-owl-vscode-theme                            MIT
+Tokyo Night        folke/tokyonight.nvim ("night")                         Apache-2.0
+Catppuccin Mocha   catppuccin/catppuccin                                   MIT
+Gruvbox Dark       morhetz/gruvbox                                         MIT
+Nord               nordtheme/nord                                          MIT
+Solarized Dark     altercation/solarized                                   MIT
+Cyberpunk          Kaan's Terminal'in kendi paleti (vurgu #fcee0a, zemin #0d0b14)
+Kaan's Terminal    Kaan's Terminal'in kendi paleti
+Kaan's Signature   Kaan's Terminal'in kendi imza teması (palet, dokular, filigran ve imleç bize ait)
+
+Not: Bazı temaların terminal (ANSI) renkleri resmi repoda tanımlı değil ya da birden fazla varyantı var
+(One Dark, Ayu); bu durumda en yaygın kullanılan terminal varyantı alındı.

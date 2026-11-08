@@ -1,0 +1,42 @@
+# Sunucuda /root/kaans-terminal/server/deploy/docker-compose.yml (bkz. DEPLOYMENT.md).
+# Şifreler aynı klasördeki .env'den (sunucuda openssl rand -hex 32 ile üretildi; git'e girmez).
+# Postgres dışa açılmaz (yalnızca compose ağı); uygulama yalnızca 127.0.0.1:4000'de (nginx önünde).
+name: kaans-terminal
+services:
+  db:
+    image: postgres:17.10-alpine3.24
+    container_name: kaans-terminal-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kaans
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD}
+      POSTGRES_DB: kaans
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kaans -d kaans"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 256m
+
+  app:
+    build:
+      context: ../..
+      dockerfile: server/Dockerfile
+    image: kaans-terminal-server
+    container_name: kaans-terminal-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://kaans:${DB_PASSWORD}@db:5432/kaans
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?ADMIN_TOKEN}
+    ports:
+      - "127.0.0.1:4000:8787"
+    mem_limit: 256m
+
+volumes:
+  pgdata:
+    name: kaans-terminal_pgdata

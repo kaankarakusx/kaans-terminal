@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Kaan's Terminal",
+  "version": "0.1.0",
+  "identifier": "com.kaankarakus.kaans-terminal",
+  "build": {
+    "frontendDist": "../web/dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": {
+      "script": "npm run dev",
+      "cwd": "../web",
+      "wait": false
+    },
+    "beforeBuildCommand": {
+      "script": "node ../src-tauri/scripts/fetch-rtk.mjs && npm run build",
+      "cwd": "../web"
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Kaan's Terminal",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 960,
+        "minHeight": 600,
+        "backgroundColor": "#0a0705"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+    },
+    "macOSPrivateApi": true
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "resources/bin/*/rtk",
+      "resources/bin/*/rtk.exe",
+      "resources/licenses/*"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZDOTg1NTBGNDc1Q0EyMEEKUldRS29seEhEMVdZYkh2dG9wTXEyeEMwRyt4dmtKaDl1aXkrb0ZDaGlkc3REMXMyeGFTQTg0OUsK",
+      "endpoints": [
+        "https://github.com/kaankarakusx/kaans-terminal/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

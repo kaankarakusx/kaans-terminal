@@ -1,0 +1,8 @@
+{
+  "name": "@kaans/shared",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Kaan's Terminal: uygulama ve sunucunun ortak kuralları (XP, level, rütbe)",
+  "exports": { "./*": "./src/*.ts" }
+}

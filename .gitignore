@@ -1,0 +1,16 @@
+/target
+node_modules/
+dist/
+.DS_Store
+*.log
+apps/desktop/src-tauri/gen/schemas/
+
+# rtk ikili dosyaları: scripts/fetch-rtk.mjs indirir (sürüm + SHA-256 betikte sabit)
+apps/desktop/src-tauri/resources/bin/
+
+.env
+.env.*
+!.env.example
+*.private.md
+private/
+CLAUDE.local.md

@@ -1,0 +1,39 @@
+{
+  "id": "kaans",
+  "name": "Kaan's Terminal",
+  "bg": "#251200",
+  "fg": "#f5ebe0",
+  "cursor": "#f88008",
+  "selection": "#4d3f33",
+  "accent": "#f88008",
+  "ansi": [
+    "#1a0d00", "#ff4d4d", "#3dffa8", "#ffd23f", "#5b8cff", "#9d6bff", "#00e5ff", "#d9c3a8",
+    "#6f5d4d", "#ff4d4d", "#3dffa8", "#ffd23f", "#5b8cff", "#9d6bff", "#00e5ff", "#fff8f0"
+  ],
+  "ui": {
+    "--bg": "#0a0705",
+    "--panel-rgb": "22, 13, 7",
+    "--term-bg": "#251200",
+    "--accent-soft": "#ffb057",
+    "--accent-pale": "#ffd9a8",
+    "--ink": "#1a0d00",
+    "--txt": "#f5ebe0",
+    "--hi": "#fff8f0",
+    "--txt2": "#d9c3a8",
+    "--txt3": "#b39a82",
+    "--dim": "#8f7a66",
+    "--faint": "#6f5d4d",
+    "--dim2": "#4d3f33",
+    "--cyan": "#00e5ff",
+    "--warn": "#ff2e63",
+    "--violet": "#9d6bff",
+    "--amber": "#ffd23f",
+    "--green": "#3dffa8",
+    "--red": "#ff4d4d",
+    "--ended": "#5c4d40",
+    "--blue": "#5b8cff",
+    "--sky": "#38bdf8",
+    "--magenta": "#e879f9",
+    "--lime": "#b8ff3d"
+  }
+}

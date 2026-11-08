@@ -1,0 +1,13 @@
+{
+  "id": "cyberpunk",
+  "name": "Cyberpunk",
+  "bg": "#0d0b14",
+  "fg": "#e6e1f5",
+  "cursor": "#fcee0a",
+  "selection": "#2a2440",
+  "accent": "#fcee0a",
+  "ansi": [
+    "#0d0b14", "#ff2a6d", "#05ffa1", "#fcee0a", "#3d7bff", "#b967ff", "#00f0ff", "#c8c2dc",
+    "#4a4460", "#ff5c8a", "#3dffb5", "#fff35c", "#6b9bff", "#cf8fff", "#5cf6ff", "#ffffff"
+  ]
+}

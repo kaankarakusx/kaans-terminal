@@ -1,0 +1,98 @@
+/*
+ * Varsayılan tema token'ları (docs/TASARIM.md §2).
+ * Her rengin bir de `-rgb` eşi var: rgba(var(--accent-rgb), .3)
+ * Arayüzdeki bütün renkler buradan gelir; bileşenlerde ham hex yazılmaz.
+ */
+:root {
+  /* zeminler */
+  --bg: #0a0705;
+  --bg-rgb: 10, 7, 5;
+  --panel-rgb: 22, 13, 7;
+  --glass-a: 0.8;
+  --panel: rgba(var(--panel-rgb), var(--glass-a));
+  --term-bg: #251200;
+  --term-bg-rgb: 37, 18, 0;
+
+  /* vurgu (marka) */
+  --accent: #f88008;
+  --accent-rgb: 248, 128, 8;
+  --accent-soft: #ffb057;
+  --accent-soft-rgb: 255, 176, 87;
+  --accent-pale: #ffd9a8;
+  --logo: #ff8800; /* logo parlaması; temayla değişmez */
+  --line: rgba(var(--accent-rgb), 0.32);
+  --line-soft: rgba(var(--accent-rgb), 0.13);
+  --ink: #1a0d00;
+
+  /* yazı */
+  --txt: #f5ebe0;
+  --hi: #fff8f0;
+  --txt2: #d9c3a8;
+  --txt3: #b39a82;
+  --dim: #8f7a66;
+  --faint: #6f5d4d;
+  --dim2: #4d3f33;
+
+  /* anlam / durum */
+  --cyan: #00e5ff;     /* your turn */
+  --cyan-rgb: 0, 229, 255;
+  --warn: #ff2e63;     /* needs you */
+  --warn-rgb: 255, 46, 99;
+  --violet: #9d6bff;   /* subagent */
+  --violet-rgb: 157, 107, 255;
+  --amber: #ffd23f;    /* maliyet / uyarı */
+  --amber-rgb: 255, 210, 63;
+  --green: #3dffa8;    /* başarı */
+  --green-rgb: 61, 255, 168;
+  --red: #ff4d4d;      /* hata, same file */
+  --red-rgb: 255, 77, 77;
+  --ended: #5c4d40;    /* bitmiş oturum */
+
+  /* araç kategorileri */
+  --blue: #5b8cff;
+  --sky: #38bdf8;
+  --magenta: #e879f9;
+  --lime: #b8ff3d;
+
+  /* oturum renkleri (sırayla atanır) */
+  --hue0: #ffb057; --hue1: #00e5ff; --hue2: #9d6bff; --hue3: #3dffa8; --hue4: #ff5c8a;
+  --hue5: #5b8cff; --hue6: #ffd23f; --hue7: #b8ff3d; --hue8: #e879f9; --hue9: #f5ebe0;
+
+  /* tipografi (TASARIM.md §3) */
+  --font-mono: "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+  /* terminal renkleri (temadan) */
+  --ansi-0: #1a0d00;
+  --ansi-1: #ff4d4d;
+  --ansi-2: #3dffa8;
+  --ansi-3: #ffd23f;
+  --ansi-4: #5b8cff;
+  --ansi-5: #9d6bff;
+  --ansi-6: #00e5ff;
+  --ansi-7: #d9c3a8;
+  --ansi-8: #6f5d4d;
+  --ansi-9: #ff4d4d;
+  --ansi-10: #3dffa8;
+  --ansi-11: #ffd23f;
+  --ansi-12: #5b8cff;
+  --ansi-13: #9d6bff;
+  --ansi-14: #00e5ff;
+  --ansi-15: #fff8f0;
+  --selection: #4d3f33;
+  --font-ui: var(--font-mono);
+  --fs-scale: 1;
+  --fs: calc(clamp(10px, 0.68vw, 13px) * var(--fs-scale));
+}
+
+/* araç kategorisi renkleri (TASARIM.md §2.4) */
+:root {
+  --cat-web: var(--sky);
+  --cat-browser: var(--blue);
+  --cat-read: var(--green);
+  --cat-search: var(--lime);
+  --cat-edit: var(--amber);
+  --cat-bash: var(--accent);
+  --cat-agent: var(--violet);
+  --cat-mcp: var(--magenta);
+  --cat-plan: var(--txt3);
+  --cat-other: var(--dim);
+}

@@ -1,0 +1,80 @@
+/*
+  İmza tema katmanı (TASARIM.md §9.5): yalnızca <html class="sig"> iken (imza tema seçili ya da önizlemede).
+  Tasarım tamamen bizim: çizgili ve eğik kesimli panel etiketleri, taramalı panel başlıkları, ızgaralı üst bar,
+  parlayan köşe süsleri, altıgen filigran, kendi imlecimiz, Space Grotesk (SIL OFL 1.1) etiket/logo yazı tipi.
+  Renkler tema token'larından.
+*/
+
+html.sig { --font-sig: 'Space Grotesk', var(--font-mono); }
+
+/* Logo: imza yazı tipi + parlama */
+html.sig .topbar .logo { font-family: var(--font-sig); }
+html.sig .topbar .logo b { letter-spacing: 0.16em; text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.7); }
+
+/* Panel etiketi: çapraz çizgili doku + sağdan eğik kesim */
+html.sig .panel > header > .tag {
+  padding-right: 16px;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 5px, rgba(var(--bg-rgb), 0.18) 5px 7px),
+    linear-gradient(90deg, var(--accent), var(--accent-soft));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-family: var(--font-sig, inherit);
+}
+html.sig .panel.hot > header > .tag { background: var(--warn); }
+html.sig .panel.alert > header > .tag { background: var(--red); }
+
+/* Panel başlığı: ince tarama */
+html.sig .panel > header {
+  background: repeating-linear-gradient(45deg, rgba(var(--accent-rgb), 0.05) 0 1px, transparent 1px 6px);
+  border-bottom-color: rgba(var(--accent-rgb), 0.28);
+}
+
+/* Köşe süsleri: kalın, parlayan L'ler */
+html.sig .panel::before,
+html.sig .panel::after {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.8));
+}
+
+/* Üst bar: ince ızgara + vurgu çizgisi */
+html.sig .topbar {
+  background-image:
+    linear-gradient(rgba(var(--accent-rgb), 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb), 0.05) 1px, transparent 1px);
+  background-size: 14px 14px;
+  box-shadow: inset 0 -1px 0 rgba(var(--accent-rgb), 0.45), 0 1px 14px rgba(var(--accent-rgb), 0.12);
+}
+
+/* Activity bar: seçili simgenin çizgisi daha belirgin */
+html.sig .act {
+  background-image: repeating-linear-gradient(0deg, rgba(var(--accent-rgb), 0.04) 0 1px, transparent 1px 5px);
+}
+
+/* Filigran: sağ altta çok soluk altıgen (yalnızca ana panel) */
+html.sig:not(.term-window) body::before {
+  content: '';
+  position: fixed;
+  right: 4vw;
+  bottom: 8vh;
+  width: 38vmin;
+  height: 38vmin;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.05;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23c6ff3d' stroke-width='3'%3E%3Cpath d='M50 4 90 27v46L50 96 10 73V27z'/%3E%3Cpath d='M50 20 76 35v30L50 80 24 65V35z'/%3E%3Cpath d='M42 36v28M42 50l14-14M46 47l12 17'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* İmleç: küçük köşeli ok (renkli kenarlı); bağlantı/düğme imleçleri tarayıcınınki kalır */
+html.sig,
+html.sig body {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M2 2 L2 16 L6 12 L9 18 L11.5 17 L8.6 11 L14 11 Z' fill='%230c0d10' stroke='%23c6ff3d' stroke-width='1.4' stroke-linejoin='round'/%3E%3C/svg%3E") 2 2, auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.sig .panel::before,
+  html.sig .panel::after { filter: none; }
+}

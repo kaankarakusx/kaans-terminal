@@ -1,0 +1,17 @@
+{
+  "id": "signature",
+  "name": "Kaan's Signature",
+  "signature": true,
+  "bg": "#0c0d10",
+  "fg": "#e9ede4",
+  "cursor": "#c6ff3d",
+  "selection": "#2c3320",
+  "accent": "#c6ff3d",
+  "ansi": [
+    "#0a0b0d", "#ff4766", "#3dffa0", "#ffd23d", "#4d8cff", "#b06bff", "#3de8ff", "#c9cdc2",
+    "#5a5f55", "#ff7088", "#75ffbd", "#ffe07a", "#7eaaff", "#c896ff", "#7ff0ff", "#ffffff"
+  ],
+  "ui": {
+    "--warn": "#ff3d7f"
+  }
+}

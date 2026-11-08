@@ -1,0 +1,2 @@
+{"type":"user","uuid":"s-u1","timestamp":"2026-01-15T11:02:03Z","isSidechain":true,"sessionId":"fx-main","message":{"role":"user","content":"find OAuth docs"}}
+{"type":"assistant","uuid":"s-a1","timestamp":"2026-01-15T12:20:00Z","isSidechain":true,"sessionId":"fx-main","message":{"id":"msg_s1","model":"claude-haiku-5-5","role":"assistant","content":[{"type":"tool_use","id":"toolu_s1","name":"WebSearch","input":{"query":"oauth pkce rust"}}],"usage":{"input_tokens":200,"output_tokens":30,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}

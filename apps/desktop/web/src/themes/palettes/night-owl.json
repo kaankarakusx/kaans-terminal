@@ -1,0 +1,13 @@
+{
+  "id": "night-owl",
+  "name": "Night Owl",
+  "bg": "#011627",
+  "fg": "#d6deeb",
+  "cursor": "#80a4c2",
+  "selection": "#1d3b53",
+  "accent": "#82aaff",
+  "ansi": [
+    "#011627", "#ef5350", "#22da6e", "#addb67", "#82aaff", "#c792ea", "#21c7a8", "#ffffff",
+    "#575656", "#ef5350", "#22da6e", "#ffeb95", "#82aaff", "#c792ea", "#7fdbca", "#ffffff"
+  ]
+}

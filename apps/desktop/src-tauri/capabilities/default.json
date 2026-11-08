@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Ana pencere için izinler",
+  "windows": ["main", "term-*", "chat-*"],
+  "permissions": ["core:default", "notification:default", "dialog:allow-open", "opener:allow-open-url", "core:window:allow-set-title", "core:window:allow-close", "core:window:allow-set-always-on-top", "core:window:allow-set-fullscreen", "core:window:allow-is-fullscreen", "core:window:allow-toggle-maximize", "core:window:allow-start-dragging"]
+}
