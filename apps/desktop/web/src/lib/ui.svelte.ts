@@ -26,12 +26,25 @@ class Ui {
   /** Geri bildirim penceresi */
   feedback = $state(false)
 
-  /** Sol sütundaki görünümlerden birini aç/kapat (aynı anda biri) */
+  /** Sol sütundaki görünümlerden birini aç/kapat (aynı anda biri). Açılırken ana alanı kaplayan sayfa (tema,
+   *  sıralama) kapanır: sayfa sol sütunun da üstünde durur, görünüm arkasında kalırdı. */
   side(which: 'scm' | 'friends' | 'news') {
-    const open = !this[which]
+    this.setSide(which, !this[which])
+  }
+
+  /** Yalnızca açar (açıksa açık kalır): bildirimdeki "aç" düğmeleri */
+  show(which: 'scm' | 'friends' | 'news') {
+    this.setSide(which, true)
+  }
+
+  private setSide(which: 'scm' | 'friends' | 'news', open: boolean) {
     this.scm = which === 'scm' && open
     this.friends = which === 'friends' && open
     this.news = which === 'news' && open
+    if (open) {
+      this.themes = false
+      this.board = false
+    }
   }
   /** Tema sayfası (ana alanı kaplar) */
   themes = $state(false)

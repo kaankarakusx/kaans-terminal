@@ -28,7 +28,7 @@ export function appActions(): Action[] {
     },
     { id: 'app.sound', label: notifier.sound ? 'sound off' : 'sound on', icon: '♪', run: () => notifier.toggleSound() },
     { id: 'app.resetLayout', label: 'reset panels', icon: '▦', run: () => layout.reset() },
-    { id: 'app.scm', label: 'source control', icon: '⑂', run: () => (ui.scm = !ui.scm) },
+    { id: 'app.scm', label: 'source control', icon: '⑂', run: () => ui.side('scm') },
     { id: 'app.themes', label: 'themes', icon: '◐', run: () => ui.page('themes') },
     { id: 'app.shortcuts', label: 'settings', icon: '⚙', run: () => ui.openSettings('shortcuts') },
   ]

@@ -50,7 +50,7 @@
         <span class="kind">announcement</span>
         <b>{a.title}</b>
         <span class="grow"></span>
-        <button class="ic" title="open announcements" aria-label="open announcements" onclick={() => { ui.side('news'); news.dismiss(a.id) }}>⤢</button>
+        <button class="ic" title="open announcements" aria-label="open announcements" onclick={() => { ui.show('news'); news.dismiss(a.id) }}>⤢</button>
         <button class="ic" aria-label="dismiss" onclick={() => news.dismiss(a.id)}>×</button>
       </div>
       <p class="body"><RichText text={a.body} /></p>
