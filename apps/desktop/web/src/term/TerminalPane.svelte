@@ -264,4 +264,10 @@
   }
   .xterm-host :global(.xterm-screen),
   .xterm-host :global(.xterm-rows) { background: transparent; }
+  /* Claude Code (dark-ansi) kullanıcı mesajının zeminini ANSI 8 (bright black) ile çizer: gri yerine temanın vurgu
+     rengine boyanır. Yalnızca zemin sınıfı; ANSI 8 yazı rengi (soluk metin) değişmez. DOM çizicide geçerli
+     (saydam pencere); xterm'in kuralından daha özgül. */
+  .xterm-host :global(.xterm-rows .xterm-bg-8) {
+    background-color: rgba(var(--accent-rgb), 0.16);
+  }
 </style>

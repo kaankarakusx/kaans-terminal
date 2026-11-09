@@ -1,5 +1,5 @@
 //! Çalışan uygulama komutları (dev sunucuları vb.): orbit.map'te araba olarak gezer.
-//! Süreç tablosundan bilinen komutlar tanınır (`npm run dev`, `vite`, `next dev`, `cargo run`, `uvicorn`, …). Zincirde
+//! Süreç tablosundan bilinen komutlar tanınır (`npm run dev`, `vite`, `next dev`, `cargo run`, `uvicorn`, `flutter run`, …). Zincirde
 //! (npm → sh → node vite) yalnızca en dıştaki gösterilir; CPU, bütün alt süreçlerin toplamıdır (tek çekirdek = %100).
 //! Süreç bilgisi kernel'den okunur; harici komut çalıştırılmaz.
 use crate::procs::ProcInfo;
@@ -43,6 +43,7 @@ pub fn is_candidate(name: &str) -> bool {
             | "deno"
             | "cargo"
             | "go"
+            | "dart"
             | "air"
             | "uvicorn"
             | "gunicorn"
@@ -161,6 +162,20 @@ pub fn classify(name: &str, args: &[String]) -> Option<String> {
             _ => None,
         },
         "go" => (rest.first() == Some(&"run")).then(|| "go run".into()),
+        "dart" => {
+            // `flutter` bir kabuk betiğidir ve `exec dart … flutter_tools.snapshot <komut>` yapar (yeni sürümler
+            // `dart run --resident … flutter_tools.dart <komut>`): süreç adı `dart` olur.
+            if let Some(i) = rest
+                .iter()
+                .position(|a| base(a).starts_with("flutter_tools"))
+            {
+                let cmd = rest[i + 1..].iter().find(|a| !a.starts_with('-')).copied();
+                return cmd
+                    .filter(|c| matches!(*c, "run" | "attach"))
+                    .map(|c| format!("flutter {c}"));
+            }
+            (rest.first() == Some(&"run")).then(|| "dart run".into())
+        }
         "air" => Some("air".into()),
         "uvicorn" | "gunicorn" | "puma" | "hugo" => Some(n.to_string()),
         "flask" => has("run").then(|| "flask run".into()),
@@ -315,6 +330,28 @@ mod tests {
             ("python3", "python3 -m uvicorn app:app", Some("uvicorn")),
             ("uvicorn", "uvicorn app:app --reload", Some("uvicorn")),
             ("go", "go run .", Some("go run")),
+            (
+                "dart",
+                "/f/bin/cache/dart-sdk/bin/dart --packages=/f/packages/flutter_tools/.dart_tool/package_config.json /f/bin/cache/flutter_tools.snapshot run -d macos",
+                Some("flutter run"),
+            ),
+            (
+                "dart",
+                "/f/dart run --resident --packages=/f/p.json /f/packages/flutter_tools/bin/flutter_tools.dart --verbose run",
+                Some("flutter run"),
+            ),
+            (
+                "dart.exe",
+                "C:\\f\\dart.exe --packages=C:\\f\\p.json C:\\f\\bin\\cache\\flutter_tools.snapshot run",
+                Some("flutter run"),
+            ),
+            (
+                "dart",
+                "/f/dart --packages=/f/p.json /f/bin/cache/flutter_tools.snapshot build ios",
+                None,
+            ),
+            ("dart", "dart run bin/server.dart", Some("dart run")),
+            ("dart", "dart language-server", None),
             ("rails", "rails s", Some("rails server")),
             ("git", "git status", None),
         ];
