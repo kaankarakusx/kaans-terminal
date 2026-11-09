@@ -103,9 +103,23 @@ fn home() -> String {
         .unwrap_or_else(|| "/".into())
 }
 
+/// Sync komutlar Tauri'de ana (UI) iş parçacığında çalışır. Soket/süreç/dosya bekleyen her şey buradan geçer:
+/// bekleme sırasında bütün pencereler donmasın.
+async fn off_main<T: Send + 'static>(
+    name: &'static str,
+    f: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(move || crate::watchdog::timed(name, f))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
-pub fn term_state(app: AppHandle, t: State<'_, Terminals>) -> Result<TermState, String> {
-    Ok(t.control(&app)?.snapshot().into())
+pub async fn term_state(app: AppHandle) -> Result<TermState, String> {
+    off_main("term_state", move || {
+        Ok(app.state::<Terminals>().control(&app)?.snapshot().into())
+    })
+    .await
 }
 
 #[tauri::command]
@@ -154,28 +168,31 @@ pub async fn term_create(
 
 /// Bölmeyi oturuma bağlar: önce geçmiş, sonra canlı çıktı ham bayt olarak `on_output`'a akar.
 #[tauri::command]
-pub fn term_attach(
+pub async fn term_attach(
     app: AppHandle,
-    t: State<'_, Terminals>,
     id: String,
     on_output: Channel<InvokeResponseBody>,
 ) -> Result<u64, String> {
-    t.control(&app)?;
-    let attach = t.next_attach.fetch_add(1, Ordering::Relaxed);
-    let app_end = app.clone();
-    let a = Attachment::open(
-        &t.socket,
-        &id,
-        move |bytes| {
-            let _ = on_output.send(InvokeResponseBody::Raw(bytes));
-        },
-        move || {
-            let _ = app_end.emit(EV_ENDED, attach);
-        },
-    )
-    .map_err(|e| e.to_string())?;
-    guard(&t.attachments).insert(attach, a);
-    Ok(attach)
+    off_main("term_attach", move || {
+        let t = app.state::<Terminals>();
+        t.control(&app)?;
+        let attach = t.next_attach.fetch_add(1, Ordering::Relaxed);
+        let app_end = app.clone();
+        let a = Attachment::open(
+            &t.socket,
+            &id,
+            move |bytes| {
+                let _ = on_output.send(InvokeResponseBody::Raw(bytes));
+            },
+            move || {
+                let _ = app_end.emit(EV_ENDED, attach);
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        guard(&t.attachments).insert(attach, a);
+        Ok(attach)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -220,7 +237,7 @@ pub fn term_kill_leftover(app: AppHandle, t: State<'_, Terminals>, pid: u32) -> 
 
 /// Terminal penceresi açar (ya da varsa öne getirir). `session` verilirse o oturum bir sekmede açılır.
 #[tauri::command]
-pub fn term_open_window(
+pub async fn term_open_window(
     app: AppHandle,
     t: State<'_, Terminals>,
     label: Option<String>,
@@ -261,13 +278,17 @@ pub fn term_open_window(
     let builder = builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
         .hidden_title(true);
-    builder.build().map_err(|e| e.to_string())?;
+    crate::watchdog::timed("term_open_window", || builder.build()).map_err(|e| e.to_string())?;
     Ok(label)
 }
 
 /// ⌘-tık: dosyayı kendi uygulamasında açar. Göreli yol terminalin klasörüne göre; `:12:3` gibi satır eki atılır.
 #[tauri::command]
-pub fn open_path(app: AppHandle, path: String, cwd: Option<String>) -> Result<(), String> {
+pub async fn open_path(app: AppHandle, path: String, cwd: Option<String>) -> Result<(), String> {
+    off_main("open_path", move || open_path_sync(&app, path, cwd)).await
+}
+
+fn open_path_sync(app: &AppHandle, path: String, cwd: Option<String>) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     let mut p = path
         .trim()
@@ -304,7 +325,11 @@ pub fn open_path(app: AppHandle, path: String, cwd: Option<String>) -> Result<()
 /// iTerm2 ya da Terminal'de çalışan bir sohbeti öne getirir (tty eşleştirmesi, AppleScript).
 /// Yalnızca kullanıcı tıklayınca çalışır; uygulama kapalıysa onu açmaz. İlk seferde macOS otomasyon izni ister.
 #[tauri::command]
-pub fn focus_external(pid: u32) -> Result<bool, String> {
+pub async fn focus_external(pid: u32) -> Result<bool, String> {
+    off_main("focus_external", move || focus_external_sync(pid)).await
+}
+
+fn focus_external_sync(pid: u32) -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
         let Some(tty) = crate::procs::tty(pid) else {
@@ -364,8 +389,13 @@ return "no""#
 /// Klasörün git dalı: `.git/HEAD` okunur (yukarı doğru aranır; worktree'de `.git` dosyası gitdir'i gösterir).
 /// git çalıştırılmaz. Dal değilse (detached) kısa commit.
 #[tauri::command]
-pub fn git_branch(cwd: String) -> Option<String> {
-    git_branch_of(std::path::Path::new(&cwd))
+pub async fn git_branch(cwd: String) -> Option<String> {
+    off_main("git_branch", move || {
+        Ok(git_branch_of(std::path::Path::new(&cwd)))
+    })
+    .await
+    .ok()
+    .flatten()
 }
 
 pub fn git_branch_of(start: &std::path::Path) -> Option<String> {

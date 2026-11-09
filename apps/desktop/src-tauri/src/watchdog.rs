@@ -39,6 +39,19 @@ struct Pulse {
 
 static PULSES: LazyLock<Mutex<HashMap<String, Pulse>>> = LazyLock::new(Default::default);
 
+const SLOW: Duration = Duration::from_millis(500);
+
+/// İşi çalıştırır; 500 ms'yi aşarsa `[slow] <ad> <ms>ms` yazar (bekçinin eşiğinin altındaki takılmalar için).
+pub fn timed<T>(name: &str, f: impl FnOnce() -> T) -> T {
+    let start = Instant::now();
+    let out = f();
+    let took = start.elapsed();
+    if took >= SLOW {
+        log("slow", &format!("{name} {}ms", took.as_millis()));
+    }
+    out
+}
+
 /// Günlüğe tek kayıt. `dir` verilmezse kurulumdaki klasör.
 pub fn log(kind: &str, text: &str) {
     if let Some(dir) = LOG_DIR.get() {
