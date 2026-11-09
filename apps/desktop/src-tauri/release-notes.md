@@ -1,1 +1,2 @@
-- Fix: Shift+Enter in a terminal now starts a new line in Claude Code instead of sending the message.
+- New: `flutter run` (and `dart run`) is now detected as a running app: it shows up as a car on orbit.map instead of staying in the sessions list.
+- New: your messages in Claude Code now use the theme's accent color as background instead of plain gray.
