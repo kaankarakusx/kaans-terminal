@@ -1,1 +1,5 @@
-- Fix: an account created on a different server (for example a local development server) is no longer reused. If the server doesn't recognise your account, the app lets you pick your hacker name again instead of silently staying offline.
+- Claude profiles: if you run more than one Claude account (for example `claude-work` with its own `CLAUDE_CONFIG_DIR`), pick one in Settings → Profiles. Chats, costs, limits and the spend ledger follow that profile.
+- Source Control: click the branch name to switch branches, create a new branch (from the current one or any other), or check out a remote branch.
+- Settings now open as a full page.
+- Fix: opening a terminal from the chat list or orbit.map no longer freezes the app for a few seconds.
+- Fix: announcements, Source Control and friends open even while the themes or leaderboard page is shown.
