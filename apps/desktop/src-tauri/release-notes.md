@@ -1,2 +1,1 @@
-- New: `flutter run` (and `dart run`) is now detected as a running app: it shows up as a car on orbit.map instead of staying in the sessions list.
-- New: your messages in Claude Code now use the theme's accent color as background instead of plain gray.
+- Fix: your messages in Claude Code now use the theme's accent color as background with Claude's default `dark` theme too (previously only with `dark-ansi`).
