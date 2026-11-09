@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import { untrack } from 'svelte'
+  import BranchPicker from './BranchPicker.svelte'
   import FileIcon from './code/FileIcon.svelte'
   import { confirm } from './dialog.svelte'
   import { ago } from './format'
@@ -21,6 +22,8 @@
   let collapsed = $state<Record<string, boolean>>({})
   let historyOpen = $state<Record<string, boolean>>({})
   let menuFor = $state<string | null>(null)
+  /** Dal seçicisi açık repo */
+  let branchFor = $state<string | null>(null)
 
   // Açıkken sık yoklama. untrack: refresh'in okuduğu snapshot bu efekti her saniye yeniden çalıştırmasın.
   $effect(() => {
@@ -41,6 +44,7 @@
     if (!ui.scm || e.defaultPrevented || ui.code) return
     if (e.key === 'Escape' && !confirm.open) {
       if (menuFor) menuFor = null
+      else if (branchFor) branchFor = null
       else ui.scm = false
     }
   }
@@ -119,7 +123,15 @@
             <span class="grow"></span>
             {#if busy}<span class="busy">{busy}…</span>{/if}
             {#if st}
-              <span class="branch" title={st.upstream ? `tracking ${st.upstream}` : 'no upstream'}>⑂ {st.branch}{dirty ? '*' : ''}</span>
+              <button
+                class="branch"
+                data-branch-trigger
+                disabled={!!busy}
+                aria-haspopup="dialog"
+                aria-expanded={branchFor === repo.root}
+                title="{st.branch}{st.upstream ? ` · tracking ${st.upstream}` : ' · no upstream'} — switch or create a branch"
+                onclick={() => (branchFor = branchFor === repo.root ? null : repo.root)}>⑂ {st.branch}{dirty ? '*' : ''}</button
+              >
               {#if st.upstream}
                 <button
                   class="ab"
@@ -129,6 +141,9 @@
                   onclick={() => git.run(repo.root, 'sync')}>↻ {st.behind}↓ {st.ahead}↑</button
                 >
               {/if}
+            {/if}
+            {#if branchFor === repo.root && st}
+              <BranchPicker root={repo.root} current={st.branch} onclose={() => (branchFor = null)} />
             {/if}
           </div>
           {#if git.errors[repo.root]}<div class="err" role="alert">✕ {git.errors[repo.root]}</div>{/if}
@@ -317,13 +332,15 @@
   .ic[disabled] { opacity: 0.35; cursor: default; }
 
   .repo { border-bottom: 1px solid var(--line-soft); padding: 4px 0 8px; }
-  .rhead { display: flex; align-items: center; gap: 8px; padding: 3px 10px 3px 6px; font-size: 1.05em; }
+  .rhead { position: relative; display: flex; align-items: center; gap: 8px; padding: 3px 10px 3px 6px; font-size: 1.05em; }
   .caret { color: var(--dim); width: 1em; display: inline-block; }
   .rico { width: 14px; height: 14px; fill: none; stroke: var(--txt3); stroke-width: 1.3; vertical-align: -2px; margin-right: 4px; }
   .twist { all: unset; cursor: pointer; color: var(--txt2); white-space: nowrap; }
   .twist b { color: var(--hi); font-weight: 700; }
   .twist:focus-visible { outline: 1px solid var(--accent); }
-  .branch { color: var(--txt3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .branch { all: unset; color: var(--txt3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; cursor: pointer; padding: 0 3px; border: 1px solid transparent; }
+  .branch:hover:not([disabled]), .branch:focus-visible, .branch[aria-expanded='true'] { color: var(--hi); border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.12); }
+  .branch[disabled] { opacity: 0.5; cursor: default; }
   .ab { all: unset; color: var(--txt2); cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .ab:hover:not([disabled]), .ab:focus-visible { color: var(--hi); }
   .ab[disabled] { opacity: 0.5; cursor: default; }

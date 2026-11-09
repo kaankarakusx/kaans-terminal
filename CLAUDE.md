@@ -242,6 +242,10 @@ okuyucusu yazılacak (tahminle yazma).
   hepsi + izlenmeyen adlar + son 10 commit konusu; diff `redact_code()`'tan geçer, 60 KB'ta kesilir). Aboneliği
   kullanır; `--bare` KULLANMA (yalnızca API anahtarı görür). İstem `--tools`'tan önce gelmeli (değişken sayılı).
   Bu süreç `sessions/<pid>.json` yazar: `engine::mark_own_helper` ile listeden gizlenir. İç Claude env'i temizlenir.
+- Dal seçici `lib/BranchPicker.svelte` (repo satırındaki `⑂ dal`): `git_branches` (`for-each-ref`, yerel + uzak) ve
+  `git_checkout` (`switch`, `switch -c <ad> [temel]`, uzak dal → `switch --track`). Ad önce `check-ref-format
+  --branch` ile denetlenir (`-` ile başlayamaz). Geçiş değişikliklerin üzerine yazacaksa "stash & switch" sorulur
+  (`stash push -u`, geri açılmaz).
 - Svelte `$effect` içinde `bind:this` ile gelen öğeyi okuma (`untrack`): öğe her yüklemede yeniden oluşursa efekt
   sonsuz döngüye girer ve sayfa donar.
 

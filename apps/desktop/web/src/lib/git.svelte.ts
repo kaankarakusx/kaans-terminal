@@ -3,13 +3,21 @@
 import { invoke } from '@tauri-apps/api/core'
 import { engine, inTauri } from './engine.svelte'
 import { power } from './power.svelte'
-import type { GitChange, GitCommit, RepoRef, RepoStatus } from './types'
+import type { GitBranch, GitChange, GitCommit, RepoRef, RepoStatus } from './types'
 
 const OPEN_POLL = 4_000
 const IDLE_POLL = 20_000
 const LOG_LIMIT = 120
 
-export type GitOp = 'stage' | 'unstage' | 'discard' | 'commit' | 'push' | 'sync'
+export type GitOp = 'stage' | 'unstage' | 'discard' | 'commit' | 'push' | 'sync' | 'switch' | 'branch'
+
+export interface CheckoutOpts {
+  /** Yeni dal (`from` üzerinde; yoksa HEAD) */
+  create?: boolean
+  from?: string | null
+  /** Önce değişiklikleri stash'e koy */
+  stash?: boolean
+}
 
 // ---------------------------------------------------------------- arka uç (Tauri ya da demo)
 
@@ -18,6 +26,8 @@ interface Backend {
   status(root: string): Promise<RepoStatus>
   log(root: string, limit: number): Promise<GitCommit[]>
   run(root: string, op: GitOp, paths: string[], message: string): Promise<void>
+  branches(root: string): Promise<GitBranch[]>
+  checkout(root: string, name: string, o: CheckoutOpts): Promise<void>
   edited(): Promise<string[]>
   /** Kullanıcının kendi Claude Code'u ile commit mesajı (`claude -p`) */
   aiMessage(root: string): Promise<string>
@@ -28,6 +38,9 @@ const tauri: Backend = {
   status: (root) => invoke('git_status', { root }),
   log: (root, limit) => invoke('git_log', { root, limit }),
   run: (root, op, paths, message) => invoke('git_run', { root, op, paths, message }),
+  branches: (root) => invoke('git_branches', { root }),
+  checkout: (root, name, o) =>
+    invoke('git_checkout', { root, name, create: !!o.create, from: o.from ?? null, stash: !!o.stash }),
   edited: () => invoke('git_edited'),
   aiMessage: (root) => invoke('git_ai_message', { root }),
 }
@@ -63,7 +76,33 @@ function demoBackend(): Backend {
       to.push({ ...c, code: staging && c.code === '?' ? 'A' : !staging && c.code === 'A' ? '?' : c.code })
     }
   }
+  const branches: GitBranch[] = [
+    { name: 'feature/login', remote: false, current: true, upstream: 'origin/feature/login', time: t - 6e5, subject: 'auth: refresh tokens' },
+    { name: 'main', remote: false, current: false, upstream: 'origin/main', time: t - 5e6, subject: 'ci: cache cargo registry' },
+    { name: 'fix/typo', remote: false, current: false, upstream: null, time: t - 4e7, subject: 'docs: typo' },
+    { name: 'origin/feature/login', remote: true, current: false, upstream: null, time: t - 3.6e6, subject: 'merge main into feature/login' },
+    { name: 'origin/main', remote: true, current: false, upstream: null, time: t - 5e6, subject: 'ci: cache cargo registry' },
+    { name: 'origin/release/0.4', remote: true, current: false, upstream: null, time: t - 8e7, subject: 'release: bump to 0.4' },
+  ]
   return {
+    branches: async () => structuredClone(branches),
+    checkout: async (_r, name, o) => {
+      await new Promise((r) => setTimeout(r, 250))
+      if (!o.stash && !o.create && st.changes.length) throw 'Your changes would be overwritten by switching. Commit or stash them first.'
+      if (o.stash) st.changes = []
+      let local = name
+      if (o.create) {
+        if (branches.some((b) => !b.remote && b.name === name)) throw `A branch named ${name} already exists.`
+        branches.unshift({ name, remote: false, current: false, upstream: null, time: Date.now(), subject: log[0].subject })
+      } else if (branches.find((b) => b.name === name)?.remote) {
+        local = name.slice(name.indexOf('/') + 1)
+        if (!branches.some((b) => !b.remote && b.name === local))
+          branches.unshift({ name: local, remote: false, current: false, upstream: name, time: Date.now(), subject: '' })
+      }
+      for (const b of branches) b.current = !b.remote && b.name === local
+      st.branch = local
+      st.upstream = branches.find((b) => b.name === local)?.upstream ?? null
+    },
     repos: async () => [{ root, name: 'api-server' }],
     status: async () => structuredClone(st),
     log: async () => log,
@@ -96,6 +135,7 @@ class Git {
   repos = $state.raw<RepoRef[]>([])
   status = $state.raw<Record<string, RepoStatus>>({})
   logs = $state.raw<Record<string, GitCommit[]>>({})
+  branches = $state.raw<Record<string, GitBranch[]>>({})
   errors = $state<Record<string, string>>({})
   /** Repo başına çalışan işlem (düğmeler kilitlenir) */
   busy = $state<Record<string, GitOp | undefined>>({})
@@ -207,6 +247,31 @@ class Git {
       this.busy[root] = undefined
       await this.refresh(false)
       if (op === 'commit' || op === 'push' || op === 'sync') await this.loadLog(root)
+    }
+  }
+
+  async loadBranches(root: string) {
+    try {
+      this.branches = { ...this.branches, [root]: await backend.branches(root) }
+    } catch (e) {
+      this.errors[root] = String(e)
+    }
+  }
+
+  /** Dala geç / dal oluştur. Hata metnini döndürür (seçici "stash & switch" önerebilsin); başarıda null. */
+  async checkout(root: string, name: string, o: CheckoutOpts = {}): Promise<string | null> {
+    if (this.busy[root]) return 'busy'
+    this.busy[root] = o.create ? 'branch' : 'switch'
+    delete this.errors[root]
+    try {
+      await backend.checkout(root, name, o)
+      return null
+    } catch (e) {
+      return String(e)
+    } finally {
+      this.busy[root] = undefined
+      await this.refresh(false)
+      await Promise.all([this.loadLog(root), this.loadBranches(root)])
     }
   }
 

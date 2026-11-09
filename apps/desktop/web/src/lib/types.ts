@@ -272,6 +272,17 @@ export interface RepoStatus {
   truncated: boolean
 }
 
+export interface GitBranch {
+  /** Kısa ad: `main`, uzak dalda `origin/main` */
+  name: string
+  remote: boolean
+  current: boolean
+  upstream: string | null
+  /** Son commit (ms) */
+  time: number
+  subject: string
+}
+
 export interface GitCommit {
   hash: string
   parents: string[]

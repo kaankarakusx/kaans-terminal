@@ -198,6 +198,23 @@ async fn git_run(
 }
 
 #[tauri::command]
+async fn git_branches(root: String) -> Result<Vec<git::Branch>, String> {
+    blocking(move || git::branches(&root)).await
+}
+
+/// Dala geç ya da dal oluştur (`create`, `from`); `stash`: önce değişiklikleri stash'e koy.
+#[tauri::command]
+async fn git_checkout(
+    root: String,
+    name: String,
+    create: bool,
+    from: Option<String>,
+    stash: bool,
+) -> Result<(), String> {
+    blocking(move || git::checkout(&root, &name, create, from.as_deref(), stash)).await
+}
+
+#[tauri::command]
 async fn git_diff(
     root: String,
     path: String,
@@ -833,6 +850,8 @@ pub fn run() {
             git_log,
             git_ai_message,
             git_run,
+            git_branches,
+            git_checkout,
             git_edited,
             activity_days,
             report_error,

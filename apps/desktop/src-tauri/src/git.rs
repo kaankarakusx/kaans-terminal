@@ -135,6 +135,19 @@ fn friendly(text: &str) -> Option<String> {
     if t.contains("could not resolve host") || t.contains("network is unreachable") {
         return Some("Can't reach the remote: check your internet connection.".into());
     }
+    if t.contains("would be overwritten by checkout")
+        || t.contains("would be overwritten by switch")
+    {
+        return Some(
+            "Your changes would be overwritten by switching. Commit or stash them first.".into(),
+        );
+    }
+    static EXISTS: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"a branch named '([^']+)' already exists").expect("exists regex")
+    });
+    if let Some(c) = EXISTS.captures(text) {
+        return Some(format!("A branch named {} already exists.", &c[1]));
+    }
     if t.contains("please tell me who you are") {
         return Some("Git doesn't know your name/email yet: run git config --global user.name and user.email once.".into());
     }
@@ -735,6 +748,127 @@ pub fn blame(root: &str, path: &str, line: u32) -> Result<Option<BlameLine>, Str
     }
 }
 
+// ---------------------------------------------------------------- dallar
+
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Branch {
+    /// Kısa ad: `main`, uzak dalda `origin/main`
+    pub name: String,
+    pub remote: bool,
+    pub current: bool,
+    pub upstream: Option<String>,
+    /// Son commit zamanı (ms)
+    pub time: i64,
+    pub subject: String,
+}
+
+/// `git for-each-ref` çıktısı (alanlar 0x1f, kayıtlar 0x1e ile ayrılır). Uzak `HEAD` takma adları atlanır.
+pub fn parse_branches(raw: &str) -> Vec<Branch> {
+    raw.split(RS)
+        .filter_map(|rec| {
+            let rec = rec.trim_start_matches('\n');
+            let f: Vec<&str> = rec.splitn(6, FS).collect();
+            if f.len() < 6 {
+                return None;
+            }
+            let remote = f[1].starts_with("refs/remotes/");
+            if !remote && !f[1].starts_with("refs/heads/") {
+                return None;
+            }
+            if remote && f[1].ends_with("/HEAD") {
+                return None;
+            }
+            Some(Branch {
+                name: f[2].to_string(),
+                remote,
+                current: f[0] == "*",
+                upstream: Some(f[3]).filter(|u| !u.is_empty()).map(str::to_string),
+                time: f[4].trim().parse::<i64>().unwrap_or(0) * 1000,
+                subject: redact(f[5].trim_end()).into_owned(),
+            })
+        })
+        .collect()
+}
+
+/// Yerel ve uzak dallar, son commit'e göre yeniden eskiye.
+pub fn branches(root: &str) -> Result<Vec<Branch>, String> {
+    let r = checked_root(root)?;
+    let raw = run(
+        &r,
+        &[
+            "for-each-ref",
+            "--sort=-committerdate",
+            "--format=%(HEAD)%1f%(refname)%1f%(refname:short)%1f%(upstream:short)%1f%(committerdate:unix)%1f%(subject)%1e",
+            "refs/heads",
+            "refs/remotes",
+        ],
+        LOCAL,
+    )?;
+    Ok(parse_branches(&raw))
+}
+
+/// Kullanıcının yazdığı dal adı: seçenek gibi görünemez, `@{…}` kısaltması olamaz; gerisi git'in kendi kuralı
+/// (`git check-ref-format --branch`).
+fn checked_branch_name(r: &Path, name: &str) -> Result<(), String> {
+    let bad = name.is_empty()
+        || name.starts_with('-')
+        || name.contains("@{")
+        || name.chars().any(|c| c.is_whitespace() || c.is_control());
+    if bad || run(r, &["check-ref-format", "--branch", name], LOCAL).is_err() {
+        return Err(format!("'{}' isn't a valid branch name", redact(name)));
+    }
+    Ok(())
+}
+
+fn ref_exists(r: &Path, full: &str) -> bool {
+    run(r, &["show-ref", "--verify", "-q", full], LOCAL).is_ok()
+}
+
+/// Dal oluştur ya da dala geç. `create`: `from` (yerel ya da uzak dal; yoksa HEAD) üzerinde yeni dal.
+/// Uzak dala geçiş (`origin/x`): yerel `x` varsa ona, yoksa onu takip eden yeni yerel dal.
+/// `stash`: önce değişiklikler (izlenmeyenler dahil) stash'e konur; stash geri açılmaz.
+pub fn checkout(
+    root: &str,
+    name: &str,
+    create: bool,
+    from: Option<&str>,
+    stash: bool,
+) -> Result<(), String> {
+    let r = checked_root(root)?;
+    let name = name.trim();
+    checked_branch_name(&r, name)?;
+    let target: Vec<String> = if create {
+        let mut args = vec!["switch".to_string(), "-c".into(), name.to_string()];
+        if let Some(base) = from.map(str::trim).filter(|b| !b.is_empty()) {
+            if !ref_exists(&r, &format!("refs/heads/{base}"))
+                && !ref_exists(&r, &format!("refs/remotes/{base}"))
+            {
+                return Err(format!("no branch named {}", redact(base)));
+            }
+            args.push(base.to_string());
+        }
+        args
+    } else if ref_exists(&r, &format!("refs/heads/{name}")) {
+        vec!["switch".into(), name.to_string()]
+    } else if ref_exists(&r, &format!("refs/remotes/{name}")) {
+        let local = name.split_once('/').map_or(name, |(_, b)| b);
+        if !local.is_empty() && ref_exists(&r, &format!("refs/heads/{local}")) {
+            vec!["switch".into(), local.to_string()]
+        } else {
+            vec!["switch".into(), "--track".into(), name.to_string()]
+        }
+    } else {
+        return Err(format!("no branch named {}", redact(name)));
+    };
+    if stash {
+        let msg = format!("kaans: before switching to {name}");
+        run(&r, &["stash", "push", "-u", "-m", &msg], LOCAL)?;
+    }
+    let args: Vec<&str> = target.iter().map(String::as_str).collect();
+    run(&r, &args, LOCAL).map(drop)
+}
+
 // ---------------------------------------------------------------- geçmiş
 
 const FS: char = '\u{1f}';
@@ -788,6 +922,20 @@ pub fn log(root: &str, limit: usize) -> Result<Vec<Commit>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_branches() {
+        let raw = "*\u{1f}refs/heads/main\u{1f}main\u{1f}origin/main\u{1f}1700000000\u{1f}first\u{1e}\n \u{1f}refs/heads/feat\u{1f}feat\u{1f}\u{1f}1700000100\u{1f}wip\u{1e}\n \u{1f}refs/remotes/origin/HEAD\u{1f}origin\u{1f}\u{1f}1700000000\u{1f}first\u{1e}\n \u{1f}refs/remotes/origin/main\u{1f}origin/main\u{1f}\u{1f}1700000000\u{1f}first\u{1e}\n";
+        let b = parse_branches(raw);
+        assert_eq!(b.len(), 3);
+        assert!(b[0].current && !b[0].remote && b[0].upstream.as_deref() == Some("origin/main"));
+        assert_eq!(b[0].time, 1_700_000_000_000);
+        assert_eq!(
+            (b[1].name.as_str(), b[1].current, b[1].upstream.clone()),
+            ("feat", false, None)
+        );
+        assert!(b[2].remote && b[2].name == "origin/main");
+    }
 
     #[test]
     fn parses_porcelain_v2() {
@@ -941,6 +1089,61 @@ mod tests {
         assert!(log[0].refs.iter().any(|x| x.contains("main")));
         // Uzak yok: push anlaşılır bir hatayla döner
         assert_eq!(push(&r).unwrap_err(), "no remote configured");
+
+        // Dallar: oluştur, geç, var olan adı reddet, geçersiz ad
+        checkout(&r, "feature/x", true, None, false).unwrap();
+        assert_eq!(status(&r).unwrap().branch, "feature/x");
+        checkout(&r, "main", false, None, false).unwrap();
+        assert_eq!(status(&r).unwrap().branch, "main");
+        assert!(
+            checkout(&r, "feature/x", true, None, false)
+                .unwrap_err()
+                .contains("already exists")
+        );
+        assert!(checkout(&r, "-x", true, None, false).is_err());
+        assert!(checkout(&r, "nope", false, None, false).is_err());
+        checkout(&r, "from-x", true, Some("feature/x"), false).unwrap();
+        checkout(&r, "main", false, None, false).unwrap();
+        let bs = branches(&r).unwrap();
+        assert!(
+            bs.iter()
+                .any(|b| b.name == "main" && b.current && !b.remote)
+        );
+        assert!(bs.iter().any(|b| b.name == "feature/x" && !b.current));
+
+        // Kirli ağaç: dala geçiş üzerine yazacaksa anlaşılır hata; stash ile geçer
+        checkout(&r, "other", true, None, false).unwrap();
+        std::fs::write(root.join("src/a.txt"), "other\n").unwrap();
+        stage(&r, &["src/a.txt".into()]).unwrap();
+        commit(&r, "other change").unwrap();
+        checkout(&r, "main", false, None, false).unwrap();
+        std::fs::write(root.join("src/a.txt"), "dirty\n").unwrap();
+        let err = checkout(&r, "other", false, None, false).unwrap_err();
+        assert!(err.contains("would be overwritten"), "{err}");
+        checkout(&r, "other", false, None, true).unwrap();
+        assert_eq!(status(&r).unwrap().branch, "other");
+        assert!(status(&r).unwrap().changes.is_empty());
+        checkout(&r, "main", false, None, false).unwrap();
+
+        // Uzak dal: klonda origin/feature/x → takip eden yerel dal
+        let clone = tmp.path().join("clone");
+        run(
+            tmp.path(),
+            &["clone", "-q", &r, &clone.to_string_lossy()],
+            LOCAL,
+        )
+        .unwrap();
+        let c = clone.to_string_lossy().into_owned();
+        assert!(
+            branches(&c)
+                .unwrap()
+                .iter()
+                .any(|b| b.name == "origin/feature/x" && b.remote)
+        );
+        checkout(&c, "origin/feature/x", false, None, false).unwrap();
+        let st = status(&c).unwrap();
+        assert_eq!(st.branch, "feature/x");
+        assert_eq!(st.upstream.as_deref(), Some("origin/feature/x"));
 
         // diff: çalışma ağacı ↔ dizin, staged: dizin ↔ HEAD, izlenmeyen dosya, blame
         std::fs::write(root.join("src/a.txt"), "one\ntwo\n").unwrap();
