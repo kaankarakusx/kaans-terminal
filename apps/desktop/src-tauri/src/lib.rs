@@ -9,6 +9,7 @@ pub mod integrations;
 pub mod live;
 pub mod power;
 pub mod procs;
+pub mod profiles;
 pub mod savers;
 pub mod social;
 pub mod term;
@@ -119,13 +120,15 @@ fn integration_paths(app: &AppHandle) -> Result<integrations::Paths, String> {
         claude_settings: paths::claude_dir().ok_or("home yok")?.join("settings.json"),
         app_data: app.path().app_data_dir().map_err(|e| e.to_string())?,
         exe: std::env::current_exe().map_err(|e| e.to_string())?,
+        profile: profiles::active_id(),
     })
 }
 
 fn savers_env(app: &AppHandle) -> Result<savers::Env, String> {
     let home = std::env::home_dir().ok_or("home yok")?;
     Ok(savers::Env {
-        claude_dir: paths::claude_dir().ok_or("home yok")?,
+        // rtk/caveman kendi komutlarıyla kurulur ve varsayılan Claude klasörüne yazar: seçili profilden bağımsız.
+        claude_dir: paths::default_claude_dir().ok_or("home yok")?,
         codex_dir: engine::codex::codex_dir().unwrap_or_else(|| home.join(".codex")),
         app_data: app.path().app_data_dir().map_err(|e| e.to_string())?,
         bundled_rtk: savers::bundled_rtk_rel()
@@ -195,6 +198,21 @@ async fn git_run(
         _ => Err(format!("unknown git op: {op}")),
     })
     .await
+}
+
+/// Algılanan Claude profilleri (ayrı `CLAUDE_CONFIG_DIR` klasörleri; ör. `claude-work` takma adı).
+#[tauri::command]
+async fn profiles_list() -> Result<Vec<profiles::Profile>, String> {
+    blocking(|| Ok(profiles::list())).await
+}
+
+/// Ayarlardan profil seçimi: sohbetler, maliyet, limitler ve harcama defteri bu profile göre olur.
+#[tauri::command]
+async fn profile_set(app: AppHandle, dir: String) -> Result<(), String> {
+    let data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    blocking(move || profiles::select(&data, &dir)).await?;
+    let _ = app.emit("profile://changed", ());
+    Ok(())
 }
 
 #[tauri::command]
@@ -584,9 +602,11 @@ fn run_engine(
         eprintln!("[engine] home klasörü bulunamadı; engine çalışmıyor");
         return;
     };
+    let prices = load_prices(&app);
     let mut engine = Engine::new(root, chrono::Local::now().date_naive())
-        .with_prices(load_prices(&app))
+        .with_prices(prices.clone())
         .with_codex(engine::codex::codex_dir());
+    let mut profile_gen = paths::generation();
     let mut last_power: Option<(Instant, PowerState)> = None;
     let mut detector = Detector::default();
     let mut agent_detector = engine::agents::Detector::default();
@@ -603,6 +623,20 @@ fn run_engine(
     let uid = procs::current_uid();
     loop {
         watchdog::beat("engine", true);
+        // Ayarlarda Claude profili değişti: engine o profilin klasörüyle sıfırdan kurulur (gün değişimi gibi).
+        if paths::generation() != profile_gen {
+            profile_gen = paths::generation();
+            if let Some(root) = paths::claude_dir() {
+                engine = Engine::new(root, chrono::Local::now().date_naive())
+                    .with_prices(prices.clone())
+                    .with_codex(engine::codex::codex_dir());
+                last_limits = None;
+                let mut s = lock(&shared);
+                s.events.clear();
+                s.replies.clear();
+                s.edited.clear();
+            }
+        }
         while let Ok(past) = past_rx.try_recv() {
             engine.set_past(past);
         }
@@ -613,7 +647,7 @@ fn run_engine(
             engine.set_claude_limits(
                 app_data
                     .as_deref()
-                    .and_then(integrations::read_claude_limits),
+                    .and_then(|d| integrations::read_claude_limits(d, &profiles::active_id())),
             );
         }
         let need_agents = last_agents.is_none_or(|t| t.elapsed() >= AGENTS_POLL);
@@ -732,14 +766,26 @@ fn run_social(
 /// Geçmiş günleri transcript'lerden bir kez okuyup dondurur, `ledger.json`'a yazar ve engine'e geçmiş
 /// toplamları gönderir. İlk çalıştırmada bütün transcript'ler okunur (arka planda); sonra yalnızca yeni günler.
 fn run_ledger(app: AppHandle, tx: Sender<PastTotals>) {
-    let (Some(root), Some(data)) = (paths::claude_dir(), app_data(&app)) else {
+    let (Some(mut root), Some(data)) = (paths::claude_dir(), app_data(&app)) else {
         return;
     };
-    let path = data.join("ledger.json");
+    // Profil başına ayrı defter: ~/.claude → ledger.json, ~/.claude-work → ledger-claude-work.json
+    let ledger_path = || data.join(profiles::file_name("ledger.json", &profiles::active_id()));
+    let mut path = ledger_path();
     let prices = load_prices(&app);
     let mut ledger = Ledger::load(&path);
     let mut sent_for = None;
+    let mut profile_gen = paths::generation();
     loop {
+        if paths::generation() != profile_gen {
+            profile_gen = paths::generation();
+            if let Some(r) = paths::claude_dir() {
+                root = r;
+                path = ledger_path();
+                ledger = Ledger::load(&path);
+                sent_for = None;
+            }
+        }
         let today = chrono::Local::now().date_naive();
         if ledger.needs_freeze(today) {
             let started = Instant::now();
@@ -761,7 +807,11 @@ fn run_ledger(app: AppHandle, tx: Sender<PastTotals>) {
             }
             sent_for = Some(today);
         }
-        std::thread::sleep(LEDGER_POLL);
+        // Profil değişimini çabuk fark etmek için kısa aralıklarla bekler
+        let until = Instant::now() + LEDGER_POLL;
+        while Instant::now() < until && paths::generation() == profile_gen {
+            std::thread::sleep(Duration::from_millis(500));
+        }
     }
 }
 
@@ -851,6 +901,8 @@ pub fn run() {
             git_ai_message,
             git_run,
             git_branches,
+            profiles_list,
+            profile_set,
             git_checkout,
             git_edited,
             activity_days,
@@ -877,6 +929,8 @@ pub fn run() {
         .setup(move |app| {
             // Panikler ve donmalar yerel günlüğe (errors.log); bekçi iş parçacığı nabızlara bakar.
             if let Ok(dir) = app.path().app_data_dir() {
+                // Seçili Claude profili engine/defter iş parçacıkları başlamadan önce
+                profiles::init(&dir);
                 watchdog::install_panic_hook(dir);
             }
             let handle = app.handle().clone();

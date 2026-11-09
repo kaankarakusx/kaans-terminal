@@ -81,7 +81,8 @@ Tauri CLI'ı doğrudan `npx tauri` ile çalıştırma; `web/` içinden `src-taur
 ## Değişmez kurallar
 1. **Engine salt okunurdur.** `~/.claude`, `~/.codex`, `~/.gemini` altında hiçbir dosyaya yazılmaz.
 2. **`~/.claude/sessions/` içindeki `.key` dosyaları asla okunmaz.** Yalnızca `^\d+\.json$` eşleşen dosyalar.
-3. `$CLAUDE_DIR` = `CLAUDE_CONFIG_DIR` ortam değişkeni, yoksa `~/.claude`. Yolu elle `~/.claude` diye sabitleme.
+3. `$CLAUDE_DIR` = ayarlarda seçili Claude profili, yoksa `CLAUDE_CONFIG_DIR` ortam değişkeni, o da yoksa `~/.claude`
+   (`paths::claude_dir()`). Yolu elle `~/.claude` diye sabitleme.
 4. **Oturum verisi cihazdan çıkmaz** (prompt, kod, transcript, dosya adı, token). Sunucuya yalnızca sosyal veri gider.
 5. **Arayüze giden her metin `redact()`'ten geçer**. Yeni bir metin alanı eklerken unutma.
 6. **Harici araçların ayarlarına izinsiz dokunulmaz**: önce kullanıcıya sor, yedek al, geri alınabilir yap.
@@ -196,6 +197,17 @@ kimliği `codex:<rollout dosya adı>`; durum = aynı klasörde çalışan `codex
 `request_user_input` → "needs you". Gerçek veride geçmiş bir gün: `cargo run --example codex_dump -- 2026-10-10`.
 Antigravity için yerel veri yok: şimdilik yalnızca süreçten (çalışıyor/sıra sende); kayıt biçimi görülünce
 okuyucusu yazılacak (tahminle yazma).
+
+## Claude profilleri (`src/profiles.rs`, `lib/profiles.svelte.ts`, Ayarlar → PROFILES)
+- Profil = ayrı `CLAUDE_CONFIG_DIR` klasörü (ör. `alias claude-work='CLAUDE_CONFIG_DIR="$HOME/.claude-work" claude'`).
+  Algılama salt okunur: varsayılan klasör + kabuk dosyalarındaki takma adlar + `~/.claude*` klasörleri (`projects/` ya
+  da `settings.json` olan). Seçim `<app_data>/profile.json`; `paths::set_active` + `paths::generation()`.
+- Yalnızca seçili profil gösterilir: profil değişince engine ve harcama defteri o klasörle sıfırdan kurulur, sayfa
+  `profile://changed` ile eski olayları siler. Codex etkilenmez. Terminallere dokunulmaz.
+- Profile özel uygulama dosyaları `profiles::file_name(ad, id)`: `~/.claude` için eski adlar (`ledger.json`,
+  `claude-limits.json`), diğerleri `-<id>` sonekli (`ledger-claude-work.json`). `--statusline` kipi profilini Claude'un
+  aktardığı `CLAUDE_CONFIG_DIR`'den çıkarır. Limit/tema entegrasyonu seçili profilin `settings.json`'una yazar;
+  rtk/caveman varsayılan profilde kalır.
 
 ## Entegrasyonlar (`src/integrations.rs`)
 - Harici ayarlar YALNIZCA `integration_set` komutuyla (kullanıcı Entegrasyonlar ekranında açınca) değişir.

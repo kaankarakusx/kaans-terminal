@@ -38,12 +38,22 @@ pub fn app_data_dir() -> Option<PathBuf> {
     }
 }
 
+impl Paths {
+    fn own(&self, base: &str) -> PathBuf {
+        self.app_data
+            .join(crate::profiles::file_name(base, &self.profile))
+    }
+}
+
 pub struct Paths {
     /// `$CLAUDE_DIR/settings.json`
     pub claude_settings: PathBuf,
     pub app_data: PathBuf,
     /// Uygulamanın ikili dosyası
     pub exe: PathBuf,
+    /// Claude profili soneki (`profiles::id_for`; varsayılan `~/.claude` için boş): uygulamanın bu profile ait
+    /// dosyaları (`statusline-next-<id>.json`, `claude-theme-prev-<id>.json`) ayrı tutulur.
+    pub profile: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -121,7 +131,7 @@ fn is_ours(statusline: &Value) -> bool {
 
 pub fn statusline_status(p: &Paths) -> Status {
     let dev_build = p.exe.to_string_lossy().contains("/target/debug/");
-    let chained = read_json(&p.app_data.join(NEXT_FILE))
+    let chained = read_json(&p.own(NEXT_FILE))
         .ok()
         .and_then(|m| m.get("command").and_then(Value::as_str).map(str::to_string));
     match read_json(&p.claude_settings) {
@@ -158,7 +168,7 @@ pub fn enable_statusline(p: &Paths) -> Result<(), String> {
                 o
             }
         };
-        write_json_with_backup(&p.app_data.join(NEXT_FILE), &prev_obj, &p.app_data)?;
+        write_json_with_backup(&p.own(NEXT_FILE), &prev_obj, &p.app_data)?;
     }
     let mut ours = Map::new();
     ours.insert("type".into(), Value::String("command".into()));
@@ -172,7 +182,7 @@ pub fn disable_statusline(p: &Paths) -> Result<(), String> {
     if !m.get("statusLine").is_some_and(is_ours) {
         return Ok(());
     }
-    let next_path = p.app_data.join(NEXT_FILE);
+    let next_path = p.own(NEXT_FILE);
     match read_json(&next_path) {
         Ok(prev) if !prev.is_empty() => {
             // Önceki ayar geri gelir (sarmalanmış düz değer ise açılır).
@@ -204,7 +214,7 @@ pub fn theme_status(p: &Paths) -> Status {
         Ok(m) => Status {
             id: "claude-theme",
             enabled: m.get("theme").and_then(Value::as_str) == Some(CLAUDE_ANSI_THEME)
-                && p.app_data.join(THEME_PREV).exists(),
+                && p.own(THEME_PREV).exists(),
             chained: m.get("theme").and_then(Value::as_str).map(str::to_string),
             error: None,
             dev_build: false,
@@ -221,7 +231,7 @@ pub fn theme_status(p: &Paths) -> Status {
 
 pub fn enable_theme(p: &Paths) -> Result<(), String> {
     let mut m = read_json(&p.claude_settings)?;
-    if p.app_data.join(THEME_PREV).exists()
+    if p.own(THEME_PREV).exists()
         && m.get("theme").and_then(Value::as_str) == Some(CLAUDE_ANSI_THEME)
     {
         return Ok(());
@@ -233,13 +243,13 @@ pub fn enable_theme(p: &Paths) -> Result<(), String> {
         "theme".into(),
         m.get("theme").cloned().unwrap_or(Value::Null),
     );
-    write_json_with_backup(&p.app_data.join(THEME_PREV), &prev, &p.app_data)?;
+    write_json_with_backup(&p.own(THEME_PREV), &prev, &p.app_data)?;
     m.insert("theme".into(), Value::String(CLAUDE_ANSI_THEME.into()));
     write_json_with_backup(&p.claude_settings, &m, &p.app_data)
 }
 
 pub fn disable_theme(p: &Paths) -> Result<(), String> {
-    let prev_path = p.app_data.join(THEME_PREV);
+    let prev_path = p.own(THEME_PREV);
     let Ok(prev) = read_json(&prev_path) else {
         return Ok(());
     };
@@ -272,24 +282,34 @@ pub fn disable_all(p: &Paths) -> Result<(), String> {
 
 /// `--statusline` kipi: stdin'deki JSON'dan yalnızca `rate_limits`'i yerel dosyaya yazar, sonra kullanıcının önceki
 /// statusLine komutunu aynı girdiyle çalıştırıp çıktısını basar. Hiçbir zaman hata vermez (status satırı bozulmasın).
+/// Profil, Claude'un bu sürece aktardığı `CLAUDE_CONFIG_DIR`'den çıkar (`claude-work` → `claude-limits-claude-work.json`).
 pub fn run_statusline(app_data: &Path) -> i32 {
     let mut input = Vec::new();
     let _ = io::stdin().read_to_end(&mut input);
-    statusline(&input, app_data, &mut io::stdout())
+    let profile = std::env::home_dir()
+        .map(|home| {
+            let dir = std::env::var_os("CLAUDE_CONFIG_DIR")
+                .filter(|d| !d.is_empty())
+                .map_or_else(|| home.join(".claude"), PathBuf::from);
+            crate::profiles::id_for(&dir, &home)
+        })
+        .unwrap_or_default();
+    statusline(&input, app_data, &profile, &mut io::stdout())
 }
 
-fn statusline(input: &[u8], app_data: &Path, out: &mut impl Write) -> i32 {
+fn statusline(input: &[u8], app_data: &Path, profile: &str, out: &mut impl Write) -> i32 {
+    let limits_file = crate::profiles::file_name(LIMITS_FILE, profile);
     if let Ok(v) = serde_json::from_slice::<Value>(input)
         && let Some(rl) = v.get("rate_limits")
     {
         let body = serde_json::json!({ "updated": chrono::Utc::now().timestamp_millis(), "rate_limits": rl });
         let _ = std::fs::create_dir_all(app_data);
-        let tmp = app_data.join(format!("{LIMITS_FILE}.tmp"));
+        let tmp = app_data.join(format!("{limits_file}.tmp"));
         if std::fs::write(&tmp, body.to_string()).is_ok() {
-            let _ = std::fs::rename(&tmp, app_data.join(LIMITS_FILE));
+            let _ = std::fs::rename(&tmp, app_data.join(&limits_file));
         }
     }
-    let Some(cmd) = read_json(&app_data.join(NEXT_FILE))
+    let Some(cmd) = read_json(&app_data.join(crate::profiles::file_name(NEXT_FILE, profile)))
         .ok()
         .and_then(|m| m.get("command").and_then(Value::as_str).map(str::to_string))
     else {
@@ -325,9 +345,10 @@ fn statusline(input: &[u8], app_data: &Path, out: &mut impl Write) -> i32 {
 }
 
 /// `claude-limits.json` → (5 saatlik, haftalık). `resets_at` saniye, milisaniye ya da RFC3339 olabilir.
-pub fn read_claude_limits(app_data: &Path) -> Option<crate::engine::ToolLimits> {
+pub fn read_claude_limits(app_data: &Path, profile: &str) -> Option<crate::engine::ToolLimits> {
     use crate::engine::transcript::LimitWindow;
-    let v: Value = serde_json::from_slice(&std::fs::read(app_data.join(LIMITS_FILE)).ok()?).ok()?;
+    let file = crate::profiles::file_name(LIMITS_FILE, profile);
+    let v: Value = serde_json::from_slice(&std::fs::read(app_data.join(file)).ok()?).ok()?;
     let rl = v.get("rate_limits")?;
     let window = |key: &str, minutes: u64| -> Option<LimitWindow> {
         let w = rl.get(key)?;
@@ -375,6 +396,7 @@ mod tests {
             claude_settings: tmp.path().join("claude/settings.json"),
             app_data: tmp.path().join("app"),
             exe: PathBuf::from("/Applications/Kaan's Terminal.app/Contents/MacOS/kaans-terminal"),
+            profile: String::new(),
         };
         (tmp, p)
     }
@@ -462,7 +484,7 @@ mod tests {
         .to_string();
         // Zincir yok: hiçbir şey basılmaz
         let mut out = Vec::new();
-        assert_eq!(statusline(input.as_bytes(), &p.app_data, &mut out), 0);
+        assert_eq!(statusline(input.as_bytes(), &p.app_data, "", &mut out), 0);
         assert!(out.is_empty());
         let saved = fs::read_to_string(p.app_data.join(LIMITS_FILE)).unwrap();
         assert!(
@@ -476,7 +498,7 @@ mod tests {
         )
         .unwrap();
         let mut out = Vec::new();
-        statusline(input.as_bytes(), &p.app_data, &mut out);
+        statusline(input.as_bytes(), &p.app_data, "", &mut out);
         assert_eq!(String::from_utf8_lossy(&out), "{\"model\": ok");
     }
 
@@ -522,7 +544,7 @@ mod tests {
             .to_string(),
         )
         .unwrap();
-        let l = read_claude_limits(&p.app_data).unwrap();
+        let l = read_claude_limits(&p.app_data, "").unwrap();
         assert_eq!(l.five_hour.unwrap().resets_at, 1_794_150_000);
         assert!((l.five_hour.unwrap().used_pct - 42.5).abs() < 1e-9);
         assert_eq!(l.weekly.unwrap().window_minutes, 10080);

@@ -11,7 +11,7 @@ export interface CodeTarget {
   mode: 'diff' | 'file'
 }
 
-export type SettingsTab = 'interface' | 'integrations' | 'shortcuts' | 'about'
+export type SettingsTab = 'interface' | 'profiles' | 'integrations' | 'shortcuts' | 'about'
 
 class Ui {
   picker = $state(false)

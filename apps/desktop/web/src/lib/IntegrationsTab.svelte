@@ -6,6 +6,7 @@
   import { onMount } from 'svelte'
   import { confirm } from './dialog.svelte'
   import * as api from './integrations'
+  import { profiles } from './profiles.svelte'
 
   interface Row {
     id: string
@@ -116,7 +117,10 @@
     })
   }
 
-  onMount(refresh)
+  onMount(() => {
+    void profiles.load()
+    void refresh()
+  })
 </script>
 
 <p class="lead">
@@ -147,7 +151,8 @@
           </button>
         </div>
         <p>{info?.what}</p>
-        <p class="files">changes: {info?.files} (backed up first)</p>
+        <!-- Limit/tema entegrasyonu seçili Claude profilinin klasörüne yazar (rtk/caveman varsayılan profilde kalır) -->
+        <p class="files">changes: {r.id.startsWith('claude-') ? info?.files.replace('~/.claude/', `${profiles.dir}/`) : info?.files} (backed up first)</p>
         {#each r.notes as n (n)}<p class="files">{n}</p>{/each}
         {#if r.error}<p class="err">{r.error}</p>{/if}
       </div>

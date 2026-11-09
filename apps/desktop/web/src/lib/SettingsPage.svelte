@@ -1,5 +1,5 @@
 <!--
-  Ayarlar sayfası (ana alanı kaplar; activity bar ⚙ ya da ⌘,): INTERFACE, INTEGRATIONS, SHORTCUTS, ABOUT.
+  Ayarlar sayfası (ana alanı kaplar; activity bar ⚙ ya da ⌘,): INTERFACE, PROFILES, INTEGRATIONS, SHORTCUTS, ABOUT.
   SHORTCUTS (OZELLIKLER.md §3.6): bir kısayola tıkla, yeni tuşlara bas. ↺ varsayılana döndürür.
   Kısayol çarkı için ikinci bir tetikleyici: fare tuşu.
 -->
@@ -7,12 +7,13 @@
   import AboutTab from './AboutTab.svelte'
   import { confirm } from './dialog.svelte'
   import IntegrationsTab from './IntegrationsTab.svelte'
+  import ProfilesTab from './ProfilesTab.svelte'
   import InterfaceTab from './InterfaceTab.svelte'
   import type { SettingsTab } from './ui.svelte'
   import { comboOf, label, shortcuts, type WheelMouse } from './shortcuts.svelte'
   import { ui } from './ui.svelte'
 
-  const TABS: SettingsTab[] = ['interface', 'integrations', 'shortcuts', 'about']
+  const TABS: SettingsTab[] = ['interface', 'profiles', 'integrations', 'shortcuts', 'about']
 
   let recording = $state<string | null>(null)
   let warn = $state<string | null>(null)
@@ -66,7 +67,9 @@
       </header>
       {#if warn}<div class="warn">⚠ {warn}</div>{/if}
       <div class="body"><div class="inner">
-        {#if ui.settingsTab === 'integrations'}
+        {#if ui.settingsTab === 'profiles'}
+          <ProfilesTab />
+        {:else if ui.settingsTab === 'integrations'}
           <IntegrationsTab />
         {:else if ui.settingsTab === 'interface'}
           <InterfaceTab />

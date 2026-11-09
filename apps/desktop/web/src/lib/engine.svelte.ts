@@ -8,6 +8,7 @@ import type { EngineEvent, PowerState, SessionView, Snapshot } from './types'
 const EV_STATE = 'engine://state'
 const EV_EVENTS = 'engine://events'
 const EV_POWER = 'power://state'
+const EV_PROFILE = 'profile://changed'
 const RING = 200
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
@@ -48,6 +49,11 @@ class EngineStore {
     await listen<EngineEvent[]>(EV_EVENTS, (e) => this.push(e.payload))
     await listen<PowerState>(EV_POWER, (e) => {
       this.power = e.payload
+    })
+    // Claude profili değişti: önceki profilin olayları (session.log, orbit okları) gitsin; engine yeniden kurulur.
+    await listen(EV_PROFILE, () => {
+      this.events = []
+      this.failed = new Set()
     })
     const init = await invoke<{ snapshot: Snapshot | null; events: EngineEvent[]; power: PowerState }>(
       'engine_initial',

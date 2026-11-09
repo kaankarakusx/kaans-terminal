@@ -1,13 +1,40 @@
 //! Claude Code klasör yolları (MIMARI.md §3.1).
 
 use std::path::PathBuf;
+use std::sync::RwLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-/// `$CLAUDE_DIR`: `CLAUDE_CONFIG_DIR` tanımlıysa o, değilse `~/.claude`.
+/// Ayarlarda seçilen Claude profili (`profiles.rs`); yoksa `default_claude_dir()`.
+static ACTIVE: RwLock<Option<PathBuf>> = RwLock::new(None);
+/// Profil her değiştiğinde artar: engine ve harcama defteri kendilerini yeni klasörle yeniden kurar.
+static GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// `$CLAUDE_DIR`: seçili profil; seçilmediyse `CLAUDE_CONFIG_DIR`, o da yoksa `~/.claude`.
 pub fn claude_dir() -> Option<PathBuf> {
+    if let Some(dir) = ACTIVE.read().ok().and_then(|a| a.clone()) {
+        return Some(dir);
+    }
+    default_claude_dir()
+}
+
+/// Profil seçimi olmadan: `CLAUDE_CONFIG_DIR` tanımlıysa o, değilse `~/.claude`.
+pub fn default_claude_dir() -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os("CLAUDE_CONFIG_DIR").filter(|d| !d.is_empty()) {
         return Some(PathBuf::from(dir));
     }
     std::env::home_dir().map(|home| home.join(".claude"))
+}
+
+/// Seçili profili değiştirir (`None` = varsayılan).
+pub fn set_active(dir: Option<PathBuf>) {
+    if let Ok(mut a) = ACTIVE.write() {
+        *a = dir;
+    }
+    GENERATION.fetch_add(1, Ordering::Relaxed);
+}
+
+pub fn generation() -> u64 {
+    GENERATION.load(Ordering::Relaxed)
 }
 
 /// Claude Code'un proje klasörü adı: cwd içindeki harf/rakam dışındaki her karakter `-` olur.
