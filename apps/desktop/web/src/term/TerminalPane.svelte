@@ -149,11 +149,15 @@
     }
 
     term.attachCustomKeyEventHandler((e) => {
+      const shiftEnter = e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey
+      // keydown'da false dönmek keypress'i durdurmaz: xterm keypress'ten ayrıca '\r' yollar ve Claude mesajı gönderir.
+      if (e.type === 'keypress' && shiftEnter) return false
       if (e.type !== 'keydown') return true
       if (isAppShortcut(e)) return false
       const mac = navigator.platform.toLowerCase().includes('mac')
       // Shift+Return: gönderme, yeni satır aç (Claude Code ESC+CR'yi yeni satır sayar).
-      if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (shiftEnter) {
+        e.preventDefault()
         send('\x1b\r')
         return false
       }

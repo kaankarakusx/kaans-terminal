@@ -1,5 +1,1 @@
-- Claude profiles: if you run more than one Claude account (for example `claude-work` with its own `CLAUDE_CONFIG_DIR`), pick one in Settings → Profiles. Chats, costs, limits and the spend ledger follow that profile.
-- Source Control: click the branch name to switch branches, create a new branch (from the current one or any other), or check out a remote branch.
-- Settings now open as a full page.
-- Fix: opening a terminal from the chat list or orbit.map no longer freezes the app for a few seconds.
-- Fix: announcements, Source Control and friends open even while the themes or leaderboard page is shown.
+- Fix: Shift+Enter in a terminal now starts a new line in Claude Code instead of sending the message.
