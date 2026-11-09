@@ -4,7 +4,7 @@
   import ContextMenu from './lib/ContextMenu.svelte'
   import Danger from './lib/Danger.svelte'
   import FolderPicker from './lib/FolderPicker.svelte'
-  import ShortcutSettings from './lib/ShortcutSettings.svelte'
+  import SettingsPage from './lib/SettingsPage.svelte'
   import SourceControl from './lib/SourceControl.svelte'
   import ActivityBar from './lib/ActivityBar.svelte'
   import ThemesPage from './lib/ThemesPage.svelte'
@@ -114,7 +114,7 @@
 
   // Uygulama kısayolları (⌘B sohbet listesi, ⌘N yeni terminal, çark, ayarlar); SHORTCUTS'tan değişir.
   function onkeydown(e: KeyboardEvent) {
-    if (ui.settings || ui.picker) return
+    if (ui.picker) return
     const id = shortcuts.match(e, ['app'])
     if (!id) return
     e.preventDefault()
@@ -158,6 +158,7 @@
     <!-- Tema sayfası: activity bar, üst bar ve alt şerit dışındaki her yeri kaplar -->
     {#if ui.themes}<div class="cell over"><ThemesPage /></div>
     {:else if ui.board}<div class="cell over"><LeaderboardPage /></div>
+    {:else if ui.settings}<div class="cell over"><SettingsPage /></div>
     {:else if ui.code}<div class="cell over" style:grid-column="{grid.l ? 3 : 2} / -1"><CodeView target={ui.code} /></div>{/if}
   </div>
 
@@ -173,7 +174,6 @@
   <ContextMenu />
   <FolderPicker />
   <ShortcutWheel />
-  <ShortcutSettings />
   <Celebration />
   {#if social.picking}<HackerName />{/if}
   {#if ui.feedback}<FeedbackDialog />{/if}

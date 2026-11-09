@@ -128,8 +128,9 @@ Tauri CLI'ı doğrudan `npx tauri` ile çalıştırma; `web/` içinden `src-taur
   (`TerminalPane.svelte` → `TRANSPARENT`). `:root { color-scheme: dark }` olmadan WebKit kaydırma çubuğu beyaz çıkar.
 - Tema sayfası `ThemesPage.svelte` (`ui.themes`, activity bar paleti, ⌘⇧,): ana alanı kaplar (`.over`), kart =
   uygulamanın o temadaki maketi; üzerine gelince önizleme, tıklayınca seçim.
-- Ayarlar penceresi: INTERFACE, INTEGRATIONS ve SHORTCUTS sekmeleri (`ui.openSettings(tab)`); ilk açılışta Entegrasyonlar
-  ekranı bir kez gösterilir.
+- Ayarlar sayfası `SettingsPage.svelte` (`ui.settings`; ana alanı kaplar, tema/sıralama sayfası gibi): INTERFACE,
+  INTEGRATIONS, SHORTCUTS, ABOUT sekmeleri (`ui.openSettings(tab)`); ilk açılışta Entegrasyonlar bir kez gösterilir.
+  Sol sütun görünümü (`ui.side`) açılınca sayfalar kapanır (yoksa sayfanın arkasında kalır).
 - Yeni panel: `layout.svelte.ts` (`PanelId`, varsayılan alan) + `panels.ts` kaydı + `<Panel id=…>`. Temizlenebilir
   panel `layout.clearedAt(id)` ile süzer; toplam sayan panel `onclear` ile taban değer verir.
 - orbit.map temadan bağımsızdır (`orbit/palette.ts`). Sahne `setPower()` ile kare hızını/çözünürlüğü sınırlar.
@@ -214,7 +215,7 @@ okuyucusu yazılacak (tahminle yazma).
 - XP/level/rütbe sayfada `@kaans/shared/xp` ile hesaplanır (sunucu gelince aynı kod orada). Kuralı değiştirirken
   yalnızca `packages/shared/src/xp.ts` + testleri; Rust'taki `activity::credit` heartbeat kuralının kopyasıdır.
 - Profil ve sıralama `LeaderboardPage.svelte` (`ui.board`; activity bar'daki kupa). Ana alanı
-  kaplayan sayfalar `ui.page('themes' | 'board')` ile açılır (aynı anda biri). Arkadaş/genel liste sunucuyla gelir.
+  kaplayan sayfalar `ui.page('themes' | 'board' | 'settings')` ile açılır (aynı anda biri). Arkadaş/genel liste sunucuyla gelir.
 - Rütbe renkleri temadan bağımsız (`RANKS`); rozetler `RankBadge.svelte` (kendi çizimimiz). Kutlama `Celebration.svelte`
   yalnızca uygulama öndeyken; ses `notifier.sound` açıksa. Demo'da `__xp.preview('rank')`.
 

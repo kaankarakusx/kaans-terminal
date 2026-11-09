@@ -30,7 +30,7 @@ export function appActions(): Action[] {
     { id: 'app.resetLayout', label: 'reset panels', icon: '▦', run: () => layout.reset() },
     { id: 'app.scm', label: 'source control', icon: '⑂', run: () => ui.side('scm') },
     { id: 'app.themes', label: 'themes', icon: '◐', run: () => ui.page('themes') },
-    { id: 'app.shortcuts', label: 'settings', icon: '⚙', run: () => ui.openSettings('shortcuts') },
+    { id: 'app.shortcuts', label: 'settings', icon: '⚙', run: () => (ui.settings ? ui.page('settings') : ui.openSettings('shortcuts')) },
   ]
 }
 

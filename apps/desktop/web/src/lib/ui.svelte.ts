@@ -16,6 +16,7 @@ export type SettingsTab = 'interface' | 'integrations' | 'shortcuts' | 'about'
 class Ui {
   picker = $state(false)
   wheel = $state<{ x: number; y: number } | null>(null)
+  /** Ayarlar sayfası (ana alanı kaplar, tema/sıralama sayfası gibi) */
   settings = $state(false)
   /** Source Control paneli (⌃⇧G) */
   scm = $state(false)
@@ -44,6 +45,7 @@ class Ui {
     if (open) {
       this.themes = false
       this.board = false
+      this.settings = false
     }
   }
   /** Tema sayfası (ana alanı kaplar) */
@@ -52,18 +54,20 @@ class Ui {
   board = $state(false)
 
   /** Ana alanı kaplayan sayfalardan birini aç/kapat (aynı anda biri) */
-  page(which: 'themes' | 'board') {
-    const open = which === 'themes' ? !this.themes : !this.board
+  page(which: 'themes' | 'board' | 'settings') {
+    const open = !this[which]
     this.themes = which === 'themes' && open
     this.board = which === 'board' && open
+    this.settings = which === 'settings' && open
   }
   /** Kod görüntüleyici (orta alan) */
   code = $state<CodeTarget | null>(null)
   settingsTab = $state<SettingsTab>('integrations')
 
+  /** Ayarlar sayfasını verilen sekmede açar (açıksa sekmeye geçer) */
   openSettings(tab: SettingsTab) {
     this.settingsTab = tab
-    this.settings = true
+    if (!this.settings) this.page('settings')
   }
 }
 

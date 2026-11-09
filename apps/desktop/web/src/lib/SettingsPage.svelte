@@ -1,9 +1,11 @@
 <!--
+  Ayarlar sayfası (ana alanı kaplar; activity bar ⚙ ya da ⌘,): INTERFACE, INTEGRATIONS, SHORTCUTS, ABOUT.
   SHORTCUTS (OZELLIKLER.md §3.6): bir kısayola tıkla, yeni tuşlara bas. ↺ varsayılana döndürür.
   Kısayol çarkı için ikinci bir tetikleyici: fare tuşu.
 -->
 <script lang="ts">
   import AboutTab from './AboutTab.svelte'
+  import { confirm } from './dialog.svelte'
   import IntegrationsTab from './IntegrationsTab.svelte'
   import InterfaceTab from './InterfaceTab.svelte'
   import type { SettingsTab } from './ui.svelte'
@@ -31,7 +33,7 @@
   function onkeydown(e: KeyboardEvent) {
     if (!ui.settings) return
     if (!recording) {
-      if (e.key === 'Escape') ui.settings = false
+      if (e.key === 'Escape' && !confirm.open && !e.defaultPrevented) ui.settings = false
       return
     }
     e.preventDefault()
@@ -51,18 +53,19 @@
 
 <svelte:window onkeydowncapture={onkeydown} />
 
-{#if ui.settings}
-  <div class="veil" role="presentation" onclick={(e) => e.target === e.currentTarget && (ui.settings = false)}>
-    <div class="box" role="dialog" aria-modal="true" aria-labelledby="sc-title">
-      <header role="tablist">
-        <span class="sr" id="sc-title">settings</span>
-        {#each TABS as t (t)}
-          <button role="tab" class="tab" class:on={ui.settingsTab === t} aria-selected={ui.settingsTab === t} onclick={() => (ui.settingsTab = t)}>{t.toUpperCase()}</button>
-        {/each}
-        <button class="close" aria-label="close" onclick={() => (ui.settings = false)}>×</button>
+<section class="page" aria-label="settings">
+      <header>
+        <span class="label">settings</span>
+        <div class="tabs" role="tablist" aria-label="settings sections">
+          {#each TABS as t (t)}
+            <button role="tab" class="tab" class:on={ui.settingsTab === t} aria-selected={ui.settingsTab === t} onclick={() => (ui.settingsTab = t)}>{t}</button>
+          {/each}
+        </div>
+        <span class="grow"></span>
+        <button class="close" title="close (Esc)" aria-label="close settings" onclick={() => (ui.settings = false)}>×</button>
       </header>
       {#if warn}<div class="warn">⚠ {warn}</div>{/if}
-      <div class="body">
+      <div class="body"><div class="inner">
         {#if ui.settingsTab === 'integrations'}
           <IntegrationsTab />
         {:else if ui.settingsTab === 'interface'}
@@ -100,32 +103,37 @@
         </div>
         <p class="note">Tab switching (⌘1–⌘9), scrollback (⌘↑ ⌘↓ ⌘⇞ ⌘⇟ ⌘↖ ⌘↘) and copy/paste are fixed.</p>
         {/if}
-      </div>
-    </div>
-  </div>
-{/if}
+      </div></div>
+</section>
 
 <style>
-  .veil { position: fixed; inset: 0; z-index: 118; display: grid; place-content: center; background: rgba(0, 0, 0, 0.5); }
-  .box {
-    width: min(680px, 92vw);
-    max-height: 82vh;
+  /* Tema/sıralama sayfasıyla aynı kabuk */
+  .page {
+    height: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    backdrop-filter: blur(14px);
+    min-height: 0;
+    /* Opak: çok metinli sayfa, arkadaki paneller okunmayı bozmasın */
+    background: rgb(var(--bg-rgb));
+    border: 1px solid var(--line-soft);
+    animation: fade 0.16s ease-out;
   }
-  header { display: flex; align-items: center; height: 22px; border-bottom: 1px solid var(--line-soft); }
-  .tab { all: unset; height: 100%; display: flex; align-items: center; padding: 0 10px; color: var(--dim); font-weight: 700; cursor: pointer; }
+  @keyframes fade { from { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .page { animation: none; } }
+  header { display: flex; align-items: center; gap: 10px; height: 22px; border-bottom: 1px solid var(--line-soft); }
+  .label { height: 100%; display: flex; align-items: center; padding: 0 8px; background: var(--accent); color: var(--ink); font-weight: 700; letter-spacing: 0.04em; }
+  .tabs { display: flex; height: 100%; }
+  .tab { all: unset; height: 100%; display: flex; align-items: center; padding: 0 10px; color: var(--dim); font-weight: 700; cursor: pointer; border-bottom: 2px solid transparent; box-sizing: border-box; }
   .tab:hover { color: var(--hi); }
-  .tab.on { background: var(--accent); color: var(--ink); }
+  .tab.on { color: var(--hi); border-bottom-color: var(--accent); }
   .tab:focus-visible { outline: 1px solid var(--hi); outline-offset: -1px; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .close { all: unset; margin-left: auto; padding: 0 8px; color: var(--dim); cursor: pointer; }
-  .close:hover { color: var(--hi); }
+  .grow { flex: 1; }
+  .close { all: unset; padding: 0 10px; color: var(--dim); cursor: pointer; }
+  .close:hover, .close:focus-visible { color: var(--hi); }
   .warn { padding: 4px 10px; color: var(--amber); }
-  .body { overflow: auto; padding: 6px 10px 12px; }
+  .body { flex: 1; min-height: 0; overflow: auto; padding: 10px 16px 24px; }
+  /* Okunur satır uzunluğu: geniş ekranda içerik ortada */
+  .inner { max-width: 760px; margin: 0 auto; }
   h3 { margin: 10px 0 4px; color: var(--dim); font-size: 0.85em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
   .row { display: grid; grid-template-columns: 1fr auto 22px; gap: 8px; align-items: center; padding: 1px 0; }
   .name { color: var(--txt2); }
