@@ -44,6 +44,7 @@ pub fn is_candidate(name: &str) -> bool {
             | "cargo"
             | "go"
             | "dart"
+            | "dartvm"
             | "air"
             | "uvicorn"
             | "gunicorn"
@@ -162,9 +163,10 @@ pub fn classify(name: &str, args: &[String]) -> Option<String> {
             _ => None,
         },
         "go" => (rest.first() == Some(&"run")).then(|| "go run".into()),
-        "dart" => {
+        "dart" | "dartvm" => {
             // `flutter` bir kabuk betiğidir ve `exec dart … flutter_tools.snapshot <komut>` yapar (yeni sürümler
-            // `dart run --resident … flutter_tools.dart <komut>`): süreç adı `dart` olur.
+            // `dart run --resident … flutter_tools.dart <komut>`): süreç adı `dart` olur. Yeni Dart SDK'larında `dart`
+            // da kendini `dartvm --resolved_executable_name=… --executable_name=…`'e devreder.
             if let Some(i) = rest
                 .iter()
                 .position(|a| base(a).starts_with("flutter_tools"))
@@ -174,7 +176,9 @@ pub fn classify(name: &str, args: &[String]) -> Option<String> {
                     .filter(|c| matches!(*c, "run" | "attach"))
                     .map(|c| format!("flutter {c}"));
             }
-            (rest.first() == Some(&"run")).then(|| "dart run".into())
+            // dartvm'in başlatıcıdan aldığı bayraklar atlanır: `dartvm --…executable_name=… run x.dart`
+            let cmd = rest.iter().find(|a| !a.contains("executable_name="));
+            (cmd == Some(&"run")).then(|| "dart run".into())
         }
         "air" => Some("air".into()),
         "uvicorn" | "gunicorn" | "puma" | "hugo" => Some(n.to_string()),
@@ -350,7 +354,22 @@ mod tests {
                 "/f/dart --packages=/f/p.json /f/bin/cache/flutter_tools.snapshot build ios",
                 None,
             ),
+            (
+                "dartvm",
+                "/f/dart-sdk/bin/dartvm --resolved_executable_name=/f/dart-sdk/bin/dart --executable_name=/f/dart-sdk/bin/dart --packages=/f/packages/flutter_tools/.dart_tool/package_config.json /f/bin/cache/flutter_tools.snapshot run",
+                Some("flutter run"),
+            ),
+            (
+                "dartvm",
+                "/f/dartvm --resolved_executable_name=/f/dart --packages=/f/p.json /f/bin/cache/flutter_tools.snapshot assemble --no-version-check",
+                None,
+            ),
             ("dart", "dart run bin/server.dart", Some("dart run")),
+            (
+                "dartvm",
+                "/f/dartvm --resolved_executable_name=/f/dart --executable_name=/f/dart run bin/server.dart",
+                Some("dart run"),
+            ),
             ("dart", "dart language-server", None),
             ("rails", "rails s", Some("rails server")),
             ("git", "git status", None),
