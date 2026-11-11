@@ -1,1 +1,1 @@
-- Fix: your messages in Claude Code now use the theme's accent color as background with Claude's default `dark` theme too (previously only with `dark-ansi`).
+- Fix: `flutter run` is now detected with newer Dart SDKs (where the process is named `dartvm`): it shows up as a car on orbit.map instead of staying in the sessions list.
