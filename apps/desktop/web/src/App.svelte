@@ -10,6 +10,7 @@
   import ThemesPage from './lib/ThemesPage.svelte'
   import { reportError } from './lib/errors'
   import LeaderboardPage from './lib/LeaderboardPage.svelte'
+  import ServersPage from './lib/ServersPage.svelte'
   import Celebration from './lib/Celebration.svelte'
   import { xp } from './lib/xp.svelte'
   import HackerName from './lib/HackerName.svelte'
@@ -159,6 +160,7 @@
     {#if ui.themes}<div class="cell over"><ThemesPage /></div>
     {:else if ui.board}<div class="cell over"><LeaderboardPage /></div>
     {:else if ui.settings}<div class="cell over"><SettingsPage /></div>
+    {:else if ui.servers}<div class="cell over"><ServersPage /></div>
     {:else if ui.code}<div class="cell over" style:grid-column="{grid.l ? 3 : 2} / -1"><CodeView target={ui.code} /></div>{/if}
   </div>
 

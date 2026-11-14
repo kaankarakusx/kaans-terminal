@@ -13,6 +13,9 @@
     enabled: boolean
     error: string | null
     notes: string[]
+    /** Başka bir uygulama kopyasına işaret ediyor: o kopyanın komutu */
+    otherCopy: string | null
+    devBuild: boolean
   }
 
   let rows = $state<Row[]>([])
@@ -60,6 +63,8 @@
           id: i.id,
           enabled: i.enabled,
           error: i.error,
+          otherCopy: i.otherCopy ?? null,
+          devBuild: i.devBuild,
           notes: [
             ...(i.chained && i.id === 'claude-statusline' ? [`chained: ${i.chained}`] : []),
             ...(i.chained && i.id === 'claude-theme' && !i.enabled ? [`current Claude theme: ${i.chained}`] : []),
@@ -70,6 +75,8 @@
           id: s.id,
           enabled: s.enabled,
           error: s.error,
+          otherCopy: null,
+          devBuild: false,
           notes: [
             ...(s.detail ? [s.detail] : []),
             ...(s.id === 'rtk' ? [s.source === 'yours' ? 'using your own rtk' : s.source === 'bundled' ? 'using the bundled copy' : 'bundled copy will be installed when you turn it on'] : []),
@@ -82,6 +89,19 @@
       error = String(e)
     } finally {
       loading = false
+    }
+  }
+
+  /** statusLine'ı bu kopyaya çevirir (açıkken yeniden açmak yalnızca yolu düzeltir) */
+  async function repoint(r: Row) {
+    busy = r.id
+    try {
+      await api.setEnabled(r.id, true)
+    } catch (e) {
+      error = `${INFO[r.id]?.title ?? r.id}: ${e}`
+    } finally {
+      busy = null
+      await refresh()
     }
   }
 
@@ -154,6 +174,13 @@
         <!-- Limit/tema entegrasyonu seçili Claude profilinin klasörüne yazar (rtk/caveman varsayılan profilde kalır) -->
         <p class="files">changes: {r.id.startsWith('claude-') ? info?.files.replace('~/.claude/', `${profiles.dir}/`) : info?.files} (backed up first)</p>
         {#each r.notes as n (n)}<p class="files">{n}</p>{/each}
+        {#if r.otherCopy}
+          <div class="stale">
+            <p>⚠ Points to another copy of this app, so limits stop updating when that copy is gone:</p>
+            <code>{r.otherCopy}</code>
+            <button disabled={!!busy} onclick={() => repoint(r)}>{r.devBuild ? 'point to this development build' : 'point to this app'}</button>
+          </div>
+        {/if}
         {#if r.error}<p class="err">{r.error}</p>{/if}
       </div>
     {/each}
@@ -171,6 +198,12 @@
   p { margin: 4px 0 0; color: var(--txt2); }
   .files { color: var(--dim); font-size: 0.9em; }
   .err { color: var(--red); }
+  .stale { margin-top: 6px; padding: 6px 8px; border: 1px solid rgba(var(--amber-rgb), 0.45); background: rgba(var(--amber-rgb), 0.07); }
+  .stale p { margin: 0; color: var(--amber); }
+  .stale code { display: block; margin: 4px 0 6px; color: var(--txt2); font-size: 0.9em; word-break: break-all; }
+  .stale button { all: unset; padding: 1px 10px; background: var(--amber); color: var(--ink); font-weight: 700; cursor: pointer; }
+  .stale button:hover:not([disabled]) { filter: brightness(1.1); }
+  .stale button[disabled] { opacity: 0.5; cursor: default; }
   h3 { margin: 12px 0 4px; color: var(--dim); font-size: 0.85em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
   .switch {
     all: unset;

@@ -67,6 +67,9 @@ pub struct Status {
     pub error: Option<String>,
     /// Geliştirme derlemesine işaret ediyor (target/debug)
     pub dev_build: bool,
+    /// statusLine bizim ama uygulamanın başka bir kopyasını çağırıyor (ör. silinmiş `target/debug`): limitler
+    /// o kopya yoksa güncellenmez. Değer o kopyanın komutu.
+    pub other_copy: Option<String>,
 }
 
 fn read_json(path: &Path) -> Result<Map<String, Value>, String> {
@@ -129,33 +132,55 @@ fn is_ours(statusline: &Value) -> bool {
         .is_some_and(|c| c.contains(STATUSLINE_ARG) && c.contains("kaans-terminal"))
 }
 
+fn statusline_command(m: &Map<String, Value>) -> Option<&str> {
+    m.get("statusLine")
+        .and_then(|v| v.get("command"))
+        .and_then(Value::as_str)
+}
+
 pub fn statusline_status(p: &Paths) -> Status {
     let dev_build = p.exe.to_string_lossy().contains("/target/debug/");
+    let mine = command_for(&p.exe);
     let chained = read_json(&p.own(NEXT_FILE))
         .ok()
         .and_then(|m| m.get("command").and_then(Value::as_str).map(str::to_string));
     match read_json(&p.claude_settings) {
-        Ok(m) => Status {
-            id: "claude-statusline",
-            enabled: m.get("statusLine").is_some_and(is_ours),
-            chained,
-            error: None,
-            dev_build,
-        },
+        Ok(m) => {
+            let enabled = m.get("statusLine").is_some_and(is_ours);
+            Status {
+                id: "claude-statusline",
+                enabled,
+                chained,
+                error: None,
+                dev_build,
+                other_copy: statusline_command(&m)
+                    .filter(|c| enabled && *c != mine)
+                    .map(str::to_string),
+            }
+        }
         Err(e) => Status {
             id: "claude-statusline",
             enabled: false,
             chained,
             error: Some(e),
             dev_build,
+            other_copy: None,
         },
     }
 }
 
 pub fn enable_statusline(p: &Paths) -> Result<(), String> {
     let mut m = read_json(&p.claude_settings)?;
+    let mine = command_for(&p.exe);
     if m.get("statusLine").is_some_and(is_ours) {
-        return Ok(());
+        if statusline_command(&m) == Some(mine.as_str()) {
+            return Ok(());
+        }
+        // Bizim ama uygulamanın başka bir kopyasını çağırıyor: yalnızca yol bu kopyaya çevrilir (zincir aynı kalır).
+        if let Some(Value::Object(o)) = m.get_mut("statusLine") {
+            o.insert("command".into(), Value::String(mine));
+        }
+        return write_json_with_backup(&p.claude_settings, &m, &p.app_data);
     }
     // Kullanıcının kendi statusLine'ı saklanır ve bizimkinden çağrılmaya devam eder.
     if let Some(prev) = m.get("statusLine").cloned() {
@@ -218,6 +243,7 @@ pub fn theme_status(p: &Paths) -> Status {
             chained: m.get("theme").and_then(Value::as_str).map(str::to_string),
             error: None,
             dev_build: false,
+            other_copy: None,
         },
         Err(e) => Status {
             id: "claude-theme",
@@ -225,6 +251,7 @@ pub fn theme_status(p: &Paths) -> Status {
             chained: None,
             error: Some(e),
             dev_build: false,
+            other_copy: None,
         },
     }
 }
@@ -460,6 +487,39 @@ mod tests {
         disable_all(&p).unwrap();
         let m = read_json(&p.claude_settings).unwrap();
         assert!(!m.contains_key("statusLine"));
+    }
+
+    #[test]
+    fn repoints_statusline_left_by_another_copy() {
+        let (_t, p) = setup();
+        fs::create_dir_all(p.claude_settings.parent().unwrap()).unwrap();
+        let dev = "'/x/kaans-terminal/target/debug/kaans-terminal' --statusline";
+        fs::write(
+            &p.claude_settings,
+            json!({"statusLine":{"type":"command","command":dev,"padding":0}}).to_string(),
+        )
+        .unwrap();
+        fs::create_dir_all(&p.app_data).unwrap();
+        fs::write(
+            p.own(NEXT_FILE),
+            json!({"command":"~/bin/mine"}).to_string(),
+        )
+        .unwrap();
+        let st = statusline_status(&p);
+        assert!(st.enabled);
+        assert_eq!(st.other_copy.as_deref(), Some(dev));
+
+        enable_statusline(&p).unwrap();
+        let m = read_json(&p.claude_settings).unwrap();
+        assert_eq!(m["statusLine"]["command"], command_for(&p.exe));
+        assert_eq!(m["statusLine"]["padding"], 0, "diğer alanlar korunur");
+        assert_eq!(
+            read_json(&p.own(NEXT_FILE)).unwrap()["command"],
+            "~/bin/mine",
+            "zincir değişmez"
+        );
+        assert!(statusline_status(&p).other_copy.is_none());
+        assert_eq!(backups(&p), 1);
     }
 
     #[test]

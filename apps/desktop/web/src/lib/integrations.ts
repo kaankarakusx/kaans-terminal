@@ -8,6 +8,8 @@ export interface IntegrationStatus {
   chained: string | null
   error: string | null
   devBuild: boolean
+  /** statusLine uygulamanın başka bir kopyasını çağırıyor (o kopyanın komutu) */
+  otherCopy?: string | null
 }
 
 export interface SaverStatus {

@@ -10,17 +10,18 @@
   import { label, shortcuts } from './shortcuts.svelte'
   import { ui } from './ui.svelte'
 
-  const sessionsOn = $derived(!ui.scm && !ui.friends && !ui.news && !ui.themes && !ui.board && !ui.settings && !layout.isHidden('sessions'))
+  const sessionsOn = $derived(!ui.scm && !ui.friends && !ui.news && !ui.themes && !ui.board && !ui.settings && !ui.servers && !layout.isHidden('sessions'))
 
   /** Başka bir görünüm (tema sayfası, Source Control) açıksa onu kapatıp listeyi gösterir; değilse listeyi aç/kapat. */
   function sessions() {
-    if (ui.scm || ui.friends || ui.news || ui.themes || ui.board || ui.settings) {
+    if (ui.scm || ui.friends || ui.news || ui.themes || ui.board || ui.settings || ui.servers) {
       ui.scm = false
       ui.friends = false
       ui.news = false
       ui.themes = false
       ui.board = false
       ui.settings = false
+      ui.servers = false
       layout.show('sessions')
     } else layout.toggle('sessions')
   }
@@ -33,6 +34,9 @@
   <button class:on={ui.scm} aria-pressed={ui.scm} title="source control ({label(shortcuts.combo('app.scm'))})" aria-label="source control" onclick={() => ui.side('scm')}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2.2" /><circle cx="6" cy="19" r="2.2" /><circle cx="18" cy="8" r="2.2" /><path d="M6 7.2v9.6" /><path d="M18 10.2c0 4-6 3.5-11.2 7" /></svg>
     {#if git.count}<span class="dot" aria-label="{git.count} changed files">{git.count > 99 ? '99+' : git.count}</span>{/if}
+  </button>
+  <button class:on={ui.servers} aria-pressed={ui.servers} title="servers (ssh)" aria-label="servers" onclick={() => ui.page('servers')}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1" /><rect x="3" y="13" width="18" height="7" rx="1" /><path d="M7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6" /></svg>
   </button>
   <button class:on={ui.friends} aria-pressed={ui.friends} title="friends & messages" aria-label="friends" onclick={() => ui.side('friends')}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6" /><circle cx="17" cy="9" r="2.6" /><path d="M16 14.2c3 .2 5 2.4 5 5.3" /></svg>

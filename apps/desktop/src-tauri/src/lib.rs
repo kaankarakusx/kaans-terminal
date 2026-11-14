@@ -11,6 +11,7 @@ pub mod power;
 pub mod procs;
 pub mod profiles;
 pub mod savers;
+pub mod servers;
 pub mod social;
 pub mod term;
 pub mod updates;
@@ -925,6 +926,11 @@ pub fn run() {
             git_diff,
             git_file,
             git_blame,
+            servers::servers_list,
+            servers::servers_save,
+            servers::servers_delete,
+            servers::server_connect,
+            servers::servers_probe,
         ])
         .setup(move |app| {
             // Panikler ve donmalar yerel günlüğe (errors.log); bekçi iş parçacığı nabızlara bakar.

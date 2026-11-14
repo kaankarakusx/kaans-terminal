@@ -46,19 +46,23 @@ class Ui {
       this.themes = false
       this.board = false
       this.settings = false
+      this.servers = false
     }
   }
   /** Tema sayfası (ana alanı kaplar) */
   themes = $state(false)
   /** Sıralama sayfası (kupa) */
   board = $state(false)
+  /** Kayıtlı sunucular (ssh) */
+  servers = $state(false)
 
   /** Ana alanı kaplayan sayfalardan birini aç/kapat (aynı anda biri) */
-  page(which: 'themes' | 'board' | 'settings') {
+  page(which: 'themes' | 'board' | 'settings' | 'servers') {
     const open = !this[which]
     this.themes = which === 'themes' && open
     this.board = which === 'board' && open
     this.settings = which === 'settings' && open
+    this.servers = which === 'servers' && open
   }
   /** Kod görüntüleyici (orta alan) */
   code = $state<CodeTarget | null>(null)

@@ -330,6 +330,16 @@ okuyucusu yazılacak (tahminle yazma).
   `ui:<pencere>` (`ui_beat` 2 sn'de bir, yalnızca görünür+öndeyken; 10 sn). Release'te ana sayfa 30 sn donarsa
   yeniden yüklenir.
 
+## Sunucular (`src/servers.rs`, `lib/servers.svelte.ts`, `lib/ServersPage.svelte`)
+- Termius gibi kayıtlı sunucular: ayrı sayfa (`ui.page('servers')`, activity bar), oturum listesinden bağımsız.
+  Kart tıklanınca `server_connect` → `ssh [-p] [-i] -- [user@]host` çalıştıran normal terminal oturumu, kendi penceresinde.
+- Liste `<app_data>/servers.json` (0600). Parola/anahtar içeriği saklanmaz; kimlik doğrulama kullanıcının `ssh`'ı
+  (agent, Anahtar Zinciri, `~/.ssh/config`). Argümanlar kabuktan geçmez; host/kullanıcı `-` ile başlayamaz.
+- `~/.ssh/config` yalnızca okunur (joker içermeyen `Host` takma adları öneri olarak; `Include` izlenmez).
+- Sayfa: kart ızgarası + sağda düzenleme çekmecesi (canlı `ssh` komutu önizlemesi), grup filtreleri (renk `groupHue` →
+  `--hueN`), sağ tık menüsü, klavye (/ ↑↓←→ ↩ E ⌘N). `servers_probe`: ssh portuna TCP (2,5 sn; ProxyJump varsa
+  "via proxy"), yalnızca sayfa açıkken 30 sn'de bir. Açık bağlantı = komutu `ssh` ve son argümanı hedef olan oturum.
+
 ## Token savers (`src/savers.rs`)
 - rtk: yalnızca **rtk-oss** (Apache-2.0; varsayılan rtk BUSL-1.1 motor içerir). Sürüm ve SHA-256
   `src-tauri/scripts/fetch-rtk.mjs` içinde sabit; ikili dosyalar git'e girmez, `resources/bin/<hedef>/` altına
