@@ -1,1 +1,6 @@
-- Fix: `flutter run` is now detected with newer Dart SDKs (where the process is named `dartvm`): it shows up as a car on orbit.map instead of staying in the sessions list.
+- New: **Servers** — save your servers once and connect with a single click. Each connection opens in its own terminal window running your own `ssh`, so keys, ssh-agent and `~/.ssh/config` work as usual. Passwords and keys are never stored.
+  - Live reachability on every card (latency in ms), open-connection badge, groups with colors and filters
+  - Side editor with a live `ssh` command preview, "save & connect", right-click menu, keyboard navigation (`/`, arrows, `↩`, `E`, `⌘N`)
+  - Import host aliases from `~/.ssh/config` (read-only)
+- New: chats waiting for you ("your turn") get a softly glowing LED strip on the left of their card.
+- Fix: Claude limits in the top bar stopped updating when Claude's statusLine pointed at another copy of the app. Settings → Integrations now shows this and fixes it with one click ("point to this app").
