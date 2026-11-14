@@ -164,6 +164,23 @@
   .card.busy { border-color: rgba(var(--accent-rgb), 0.8); box-shadow: inset 0 0 18px rgba(var(--accent-rgb), 0.08); }
   .card.waiting { border-color: rgba(var(--warn-rgb), 0.8); box-shadow: inset 0 0 18px rgba(var(--warn-rgb), 0.08); }
   .card.idle { border-color: rgba(var(--cyan-rgb), 0.45); }
+  /* Sıra sende: sol kenarda yavaşça nefes alan LED şeridi */
+  .card.idle::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--cyan);
+    box-shadow: 0 0 6px rgba(var(--cyan-rgb), 0.9), 0 0 14px rgba(var(--cyan-rgb), 0.45);
+    animation: led 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes led {
+    50% { opacity: 0.45; box-shadow: 0 0 3px rgba(var(--cyan-rgb), 0.6), 0 0 8px rgba(var(--cyan-rgb), 0.2); }
+  }
   .card.ended { opacity: 0.55; }
   .winopen { box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.5), 0 0 16px rgba(var(--accent-rgb), 0.25); }
   .folded { padding-block: 4px; }
@@ -264,5 +281,6 @@
   .sub { color: var(--violet); border: 1px solid rgba(var(--violet-rgb), 0.4); padding: 0 4px; font-size: 0.85em; }
   @media (prefers-reduced-motion: reduce) {
     .waiting .badge { animation: none; }
+    .card.idle::before { animation: none; }
   }
 </style>
